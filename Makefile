@@ -13,7 +13,7 @@ GOPATH:=$(shell $(GOCMD) env GOPATH)
 u := $(if $(update),-u)
 
 BINARY_NAME:=chiacli
-PACKAGES:=$(shell $(GOLIST) github.com/kayuii/chiacli github.com/kayuii/chiacli/cmd/chiacli github.com/kayuii/chiacli/plot github.com/kayuii/chiacli/utils)
+PACKAGES:=$(shell $(GOLIST) github.com/kayuii/chiacli github.com/kayuii/chiacli/cmd/chiacli github.com/kayuii/chiacli/plot )
 GOFILES:=$(shell find . -name "*.go" -type f)
 
 export GO111MODULE := on
@@ -51,12 +51,6 @@ deps:
 	$(GOGET) golang.org/x/sys/unix
 	$(GOGET) github.com/google/logger
 	$(GOGET) github.com/go-cmd/cmd
-# $(GOGET) github.com/ghodss/yaml
-# $(GOGET) github.com/KyleBanks/depth
-# $(GOGET) github.com/go-openapi/jsonreference
-# $(GOGET) github.com/go-openapi/spec
-# $(GOGET) github.com/stretchr/testify/assert
-# $(GOGET) golang.org/x/tools/go/loader
 
 .PHONY: devel-deps
 devel-deps:

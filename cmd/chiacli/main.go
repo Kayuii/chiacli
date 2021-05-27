@@ -7,7 +7,6 @@ import (
 
 	"github.com/kayuii/chiacli"
 	"github.com/kayuii/chiacli/plot"
-	_ "github.com/kayuii/chiacli/utils"
 	"github.com/urfave/cli/v2"
 )
 
