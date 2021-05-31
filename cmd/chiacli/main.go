@@ -11,7 +11,6 @@ import (
 )
 
 const (
-	PlotID     = "PlotID"
 	NumPlots   = "NumPlots"
 	KSize      = "KSize"
 	Stripes    = "Stripes"
@@ -19,6 +18,7 @@ const (
 	Threads    = "Threads"
 	Buckets    = "Buckets"
 	NoBitfield = "NoBitfield"
+	Progress   = "Progress"
 	TempPath   = "TempPath"
 	Temp2Path  = "Temp2Path"
 	FinalPath  = "FinalPath"
@@ -30,13 +30,6 @@ const (
 )
 
 var plotFlags = []cli.Flag{
-	&cli.StringFlag{
-		Name:    PlotID,
-		Aliases: []string{"i"},
-		Value:   "",
-		Hidden:  true,
-		Usage:   "PlotID in hex for reproducing plots. ",
-	},
 	&cli.IntFlag{
 		Name:    NumPlots,
 		Aliases: []string{"n"},
@@ -79,7 +72,13 @@ var plotFlags = []cli.Flag{
 		Name:    NoBitfield,
 		Aliases: []string{"e"},
 		Value:   false,
-		Usage:   "include devicetree file into upgrade bin file",
+		Usage:   "Disable bitfield. ",
+	},
+	&cli.BoolFlag{
+		Name:    Progress,
+		Aliases: []string{"p"},
+		Value:   false,
+		Usage:   "Display progress percentage during plotting. ",
 	},
 	&cli.StringFlag{
 		Name:    TempPath,
@@ -115,7 +114,6 @@ var plotFlags = []cli.Flag{
 
 func chiaAction(c *cli.Context) error {
 	config := &plot.Config{
-		PlotID:     c.String(PlotID),
 		NumPlots:   c.Int(NumPlots),
 		KSize:      c.Int(KSize),
 		Stripes:    c.Int(Stripes),
@@ -123,6 +121,7 @@ func chiaAction(c *cli.Context) error {
 		Threads:    c.Int(Threads),
 		Buckets:    c.Int(Buckets),
 		NoBitfield: c.Bool(NoBitfield),
+		Progress:   c.Bool(Progress),
 		TempPath:   c.String(TempPath),
 		Temp2Path:  c.String(Temp2Path),
 		FinalPath:  c.String(FinalPath),
@@ -134,7 +133,6 @@ func chiaAction(c *cli.Context) error {
 
 func chiaposAction(c *cli.Context) error {
 	config := &plot.Config{
-		PlotID:     c.String(PlotID),
 		NumPlots:   c.Int(NumPlots),
 		KSize:      c.Int(KSize),
 		Stripes:    c.Int(Stripes),
@@ -142,13 +140,14 @@ func chiaposAction(c *cli.Context) error {
 		Threads:    c.Int(Threads),
 		Buckets:    c.Int(Buckets),
 		NoBitfield: c.Bool(NoBitfield),
+		Progress:   c.Bool(Progress),
 		TempPath:   c.String(TempPath),
 		Temp2Path:  c.String(Temp2Path),
 		FinalPath:  c.String(FinalPath),
 		FarmerKey:  c.String(FarmerKey),
 		PoolKey:    c.String(PoolKey),
 	}
-	return plot.New().Build(config)
+	return plot.New().Pos(config)
 }
 
 func main() {

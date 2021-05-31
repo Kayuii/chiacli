@@ -2,7 +2,7 @@ package plot
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/hex"
 	"errors"
 	"log"
 	"os"
@@ -13,31 +13,22 @@ import (
 	"strings"
 	"syscall"
 	"time"
-	"unsafe"
 
 	"github.com/go-cmd/cmd"
+	"github.com/kayuii/chiacli"
+	"github.com/kayuii/chiacli/wallet"
+	bls12381 "github.com/kilic/bls12-381"
 )
 
 type Plot struct {
-	jsonIndent func(data interface{}) ([]byte, error)
-	toJson     func(data []byte, v interface{}) error
-	jsonToYAML func(data []byte) ([]byte, error)
-	dirName    string
+	dirName string
 }
 
 func New() *Plot {
-	return &Plot{
-		jsonIndent: func(data interface{}) ([]byte, error) {
-			return json.MarshalIndent(data, "", "    ")
-		},
-		toJson: func(data []byte, v interface{}) error {
-			return json.Unmarshal(data, &v)
-		},
-	}
+	return &Plot{}
 }
 
 type Config struct {
-	PlotID     string `yaml:"PlotID"`
 	NumPlots   int    `yaml:"NumPlots"`
 	KSize      int    `yaml:"KSize"`
 	Stripes    int    `yaml:"Stripes"`
@@ -45,6 +36,7 @@ type Config struct {
 	Threads    int    `yaml:"Threads"`
 	Buckets    int    `yaml:"Buckets"`
 	NoBitfield bool   `yaml:"NoBitfield"`
+	Progress   bool   `yaml:"Progress"`
 	TempPath   string `yaml:"TempPath"`
 	Temp2Path  string `yaml:"Temp2Path"`
 	FinalPath  string `yaml:"FinalPath"`
@@ -56,12 +48,33 @@ type Config struct {
 }
 
 func (p *Plot) Chia(config *Config) error {
-
+	if !IsDir(config.TempPath) {
+		log.Println("获取缓存目录失败")
+		os.Exit(0)
+	}
+	if !IsDir(config.Temp2Path) {
+		log.Println("获取缓存目录2失败")
+		os.Exit(0)
+	}
+	if !IsDir(config.FinalPath) {
+		log.Println("获取最终目录失败")
+		os.Exit(0)
+	}
 	var (
-		ChiaExec string = "/usr/local/bin/chia"
+		ChiaExec string = "chia"
 		args     []string
 	)
 
+	log.Printf("chia utils %s by %s <%s> %s \n", chiacli.Version, chiacli.Author, chiacli.Email, chiacli.Github)
+
+	args = MakeChiaPlots(*config)
+
+	RunExec(ChiaExec, args...)
+
+	return nil
+}
+
+func (p *Plot) Pos(config *Config) error {
 	if !IsDir(config.TempPath) {
 		log.Println("获取缓存目录失败")
 		os.Exit(0)
@@ -75,9 +88,23 @@ func (p *Plot) Chia(config *Config) error {
 		os.Exit(0)
 	}
 
-	args = MakeChiaPlots(*config)
+	var (
+		ChiaExec string = "ProofOfSpace"
+		args     []string
+	)
+
+	log.Printf("chia utils %s by %s <%s> %s \n", chiacli.Version, chiacli.Author, chiacli.Email, chiacli.Github)
+
+	args = MakeChiaPos(*config)
+
+	RunExec(ChiaExec, args...)
+	return nil
+}
+
+func RunExec(ChiaExec string, args ...string) error {
 
 	cmd := cmd.NewCmd(ChiaExec, args...)
+
 	log.Println("commandline: ", ChiaExec, strings.Join(args, " "))
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -93,7 +120,8 @@ func (p *Plot) Chia(config *Config) error {
 	ticker := time.NewTicker(time.Second)
 	ln := 0
 	statusChan := cmd.Start()
-	log.Println("Process ID: #%D", cmd.Status().PID)
+
+	log.Printf("Process ID: #%d \n", cmd.Status().PID)
 	go func() {
 		for range ticker.C {
 			status := cmd.Status()
@@ -122,108 +150,88 @@ func (p *Plot) Chia(config *Config) error {
 	return nil
 }
 
-func (p *Plot) Build(config *Config) error {
-
-	var (
-		ChiaExec string = "ProofOfSpace"
-		args     []string
-	)
-
-	if !IsDir(config.TempPath) {
-		log.Println("获取缓存目录失败")
-		os.Exit(0)
-	}
-	if !IsDir(config.Temp2Path) {
-		log.Println("获取缓存目录2失败")
-		os.Exit(0)
-	}
-	if !IsDir(config.FinalPath) {
-		log.Println("获取最终目录失败")
-		os.Exit(0)
-	}
-
-	args = MakeChiaPlots(*config)
-
-	ctx, cancel := context.WithCancel(context.Background())
-	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM, syscall.SIGKILL)
-	go func() {
-		sig := <-sigs
-		log.Println("signal", sig, "called", ". Terminating...")
-		cancel()
-	}()
-
-	cmd := cmd.NewCmd(ChiaExec, args...)
-	log.Println("running cmd: ", ChiaExec, strings.Join(args, " "))
-
-	ticker := time.NewTicker(2 * time.Second)
-	statusChan := cmd.Start()
-	go func() {
-		for range ticker.C {
-			status := cmd.Status()
-			n := len(status.Stdout)
-			log.Println(status.Stdout[n-1])
-		}
-	}()
-
-	select {
-	case <-ctx.Done():
-		log.Println("context done, runner exiting...")
-	case <-statusChan:
-		// done
-	default:
-		// no, still running
-	}
-	// finalStatus := <-statusChan
-
-	log.Println(time.Now().Format("2006-01-02 15:04:05"))
-
-	return nil
-}
-
-func RunExec(ChiaExec, LogPath string) {
-	LinCmd := strings.Join([]string{`nohup `, ChiaExec, ` > `, LogPath, " 2>&1"}, "")
-	cmd := exec.Command("/bin/sh", "-c", LinCmd)
-	log.Println(cmd.Args)
-	cmd.Start()
-	log.Println(cmd.Args)
-
-	pid := cmd.Process.Pid
-
-	// r.activeProcesses[pid] = cmd.Process
-	// plotDir.AddPID(pid)
-	// farmDir.AddPID(pid)
-	// logF("[%d] now plotting. plot dir:%s farm dir:%s\n", pid, plotDir.dirStr, farmDir.dirStr)
-	log.Printf("[%d] now plotting. ", pid)
-	cmd.Wait()
-
-}
 func MakeChiaPlots(confYaml Config) []string {
 	ChiaCmd := []string{
 		"plots",
 		"create",
-		"-n", strconv.Itoa(confYaml.NumPlots),
-		"-k", strconv.Itoa(confYaml.KSize),
-		"-u", strconv.Itoa(confYaml.Buckets),
-		"-b", strconv.Itoa(confYaml.Buffer),
-		"-r", strconv.Itoa(confYaml.Threads),
 		"-f", confYaml.FarmerKey,
 		"-p", confYaml.PoolKey,
+		"-k", strconv.Itoa(confYaml.KSize),
+		"-r", strconv.Itoa(confYaml.Threads),
+		"-u", strconv.Itoa(confYaml.Buckets),
+		"-b", strconv.Itoa(confYaml.Buffer),
 		"-t", confYaml.TempPath,
 		"-2", confYaml.Temp2Path,
 		"-d", confYaml.FinalPath,
 	}
 
-	if len(confYaml.PlotID) > 0 {
-		ChiaCmd = append(ChiaCmd,
-			"-i", confYaml.PlotID,
-		)
-	}
 	if confYaml.NoBitfield {
 		ChiaCmd = append(ChiaCmd,
 			"-e",
 		)
 	}
+	return ChiaCmd
+}
+
+func MakeChiaPos(confYaml Config) []string {
+	ChiaCmd := []string{
+		"create",
+	}
+
+	sk := wallet.KeyGen(wallet.TokenBytes(32))
+	farmerPk, err := wallet.DecodePointG1(confYaml.FarmerKey)
+	if err != nil {
+		log.Fatal(err)
+	}
+	poolPk, err := wallet.DecodePointG1(confYaml.PoolKey)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// log.Printf("sk:" + hex.EncodeToString(sk.Bytes()))
+	plot_public_key := wallet.GeneratePlotPublicKey(wallet.MaterSkToLocalSk(sk).GetG1(), farmerPk)
+	plotID := wallet.CalculatePlotIdPk(poolPk, plot_public_key)
+
+	log.Printf("plot id: " + hex.EncodeToString(plotID))
+
+	g1 := bls12381.NewG1()
+	plotMemo := make([]byte, 0, 128)
+	plotMemo = append(plotMemo, g1.ToCompressed(poolPk)...)   // Len 48
+	plotMemo = append(plotMemo, g1.ToCompressed(farmerPk)...) // Len 48
+	plotMemo = append(plotMemo, sk.Bytes()...)                // Len 32
+
+	log.Printf("memo: " + hex.EncodeToString(plotID))
+
+	//  "plot-k{args.size}-{dt_string}-{plot_id}.plot"
+	dt_string := time.Now().Format("2006-01-02-15-04")
+	filename := strings.Join([]string{
+		"plot",
+		"k" + strconv.Itoa(confYaml.KSize),
+		dt_string,
+		hex.EncodeToString(plotID) + ".plot",
+	}, "-")
+
+	log.Printf("filename: " + filename)
+
+	ChiaCmd = append(ChiaCmd,
+		"-i", "0x"+hex.EncodeToString(plotID),
+		"-m", "0x"+hex.EncodeToString(plotMemo),
+		"-k", strconv.Itoa(confYaml.KSize),
+		"-r", strconv.Itoa(confYaml.Threads),
+		"-u", strconv.Itoa(confYaml.Buckets),
+		"-s", strconv.Itoa(confYaml.Stripes),
+		"-b", strconv.Itoa(confYaml.Buffer),
+		"-t", confYaml.TempPath,
+		"-2", confYaml.Temp2Path,
+		"-d", confYaml.FinalPath,
+	)
+
+	if confYaml.NoBitfield {
+		ChiaCmd = append(ChiaCmd,
+			"-e",
+		)
+	}
+
 	return ChiaCmd
 }
 
@@ -240,27 +248,6 @@ func CmdAndChangeDirToFile(commandName string, params []string) {
 	log.Println(cmd.Args)
 	cmd.Start()
 	cmd.Wait()
-}
-
-func Int2Byte(data int) (ret []byte) {
-	var len uintptr = unsafe.Sizeof(data)
-	ret = make([]byte, len)
-	var tmp int = 0xff
-	var index uint = 0
-	for index = 0; index < uint(len); index++ {
-		ret[index] = byte((tmp << (index * 8) & data) >> (index * 8))
-	}
-	return ret
-}
-
-func Byte2Int(data []byte) int {
-	var ret int = 0
-	var len int = len(data)
-	var i uint = 0
-	for i = 0; i < uint(len); i++ {
-		ret = ret | (int(data[i]) << (i * 8))
-	}
-	return ret
 }
 
 func GetCurrentPath() (string, error) {
@@ -295,26 +282,6 @@ func IsExist(path string) bool {
 	_, err := os.Stat(path)
 	return err == nil || os.IsExist(err)
 }
-
-// func GetCurrentNumber(NumberData string, current int) (n int) {
-// 	if IsExist(NumberData) {
-// 		number, err := ioutil.ReadFile(NumberData)
-// 		if err != nil {
-// 			return 0
-// 		}
-// 		return Byte2Int(number)
-// 	} else {
-// 		os.Create(NumberData)
-// 		number := Int2Byte(current)
-// 		ioutil.WriteFile(NumberData, number, 0644)
-// 		return current
-// 	}
-// }
-
-// func WriteCurrentNumber(NumberData string, current int) {
-// 	number := Int2Byte(current)
-// 	ioutil.WriteFile(NumberData, number, 0644)
-// }
 
 func IsDir(path string) bool {
 	s, err := os.Stat(path)

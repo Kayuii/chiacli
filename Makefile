@@ -51,6 +51,9 @@ deps:
 	$(GOGET) golang.org/x/sys/unix
 	$(GOGET) github.com/google/logger
 	$(GOGET) github.com/go-cmd/cmd
+	$(GOGET) github.com/kilic/bls12-381
+	$(GOGET) golang.org/x/crypto/hkdf
+	$(GOGET) github.com/stretchr/testify/require
 
 .PHONY: devel-deps
 devel-deps:
