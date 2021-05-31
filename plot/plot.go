@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"log"
 	"os"
 	"os/exec"
@@ -70,8 +71,9 @@ func (p *Plot) Chia(config *Config) error {
 	args = MakeChiaPlots(*config)
 
 	for i := 1; i <= config.NumPlots; i++ {
+		log.SetFlags(log.LstdFlags)
 		log.Printf("Plotting %d file \n", i)
-		res, err := RunExec(ChiaExec, args...)
+		res, err := RunExec(ChiaExec, strconv.Itoa(i), args...)
 		if err != nil {
 			log.Println(err)
 			return nil
@@ -107,8 +109,9 @@ func (p *Plot) Pos(config *Config) error {
 	args = MakeChiaPos(*config)
 
 	for i := 1; i <= config.NumPlots; i++ {
+		log.SetFlags(log.LstdFlags)
 		log.Printf("Plotting %d file \n", i)
-		res, err := RunExec(ChiaExec, args...)
+		res, err := RunExec(ChiaExec, strconv.Itoa(i), args...)
 		if err != nil {
 			log.Println(err)
 			return nil
@@ -117,10 +120,12 @@ func (p *Plot) Pos(config *Config) error {
 			return nil
 		}
 	}
+
+	log.SetFlags(log.LstdFlags)
 	return nil
 }
 
-func RunExec(ChiaExec string, args ...string) (b bool, e error) {
+func RunExec(ChiaExec, plotnum string, args ...string) (b bool, e error) {
 
 	cmd := cmd.NewCmd(ChiaExec, args...)
 
@@ -138,12 +143,22 @@ func RunExec(ChiaExec string, args ...string) (b bool, e error) {
 
 	ticker := time.NewTicker(time.Second)
 	ln := 0
+	le := 0
 	statusChan := cmd.Start()
 
 	log.Printf("Process ID: #%d \n", cmd.Status().PID)
+	log.SetPrefix(fmt.Sprintf("Plot-%s ", plotnum))
+	log.SetFlags(log.Lmsgprefix)
+
 	go func() {
 		for range ticker.C {
 			status := cmd.Status()
+			ne := len(status.Stderr)
+			for i := le; i < ne; i++ {
+				log.Println(status.Stderr[i])
+			}
+			le = ne
+
 			n := len(status.Stdout)
 			for i := ln; i < n; i++ {
 				log.Println(status.Stdout[i])
@@ -156,16 +171,21 @@ func RunExec(ChiaExec string, args ...string) (b bool, e error) {
 	case <-ctx.Done():
 		log.Println("context done, runner exiting...")
 		return true, nil
-	case finalStatus := <-statusChan:
-		n := len(finalStatus.Stdout)
-		log.Println(finalStatus.Stdout[n-1])
-		return true, nil
 	default:
 	}
 	finalStatus := <-statusChan
 	if finalStatus.Error != nil {
 		return true, finalStatus.Error
 	}
+	ne := len(finalStatus.Stderr)
+	for i := le; i < ne; i++ {
+		log.Println(finalStatus.Stderr[i])
+	}
+	n := len(finalStatus.Stdout)
+	for i := ln; i < n; i++ {
+		log.Println(finalStatus.Stdout[i])
+	}
+
 	log.Printf("CommandLine Use %s", time.Duration(finalStatus.StopTs-finalStatus.StartTs).String())
 
 	return false, nil
@@ -184,6 +204,12 @@ func MakeChiaPlots(confYaml Config) []string {
 		"-t", confYaml.TempPath,
 		"-2", confYaml.Temp2Path,
 		"-d", confYaml.FinalPath,
+	}
+
+	if confYaml.KSize < 32 {
+		ChiaCmd = append(ChiaCmd,
+			"--override-k",
+		)
 	}
 
 	if confYaml.NoBitfield {
