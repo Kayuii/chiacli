@@ -185,7 +185,7 @@ func RunExec(ChiaExec, plotnum string, args ...string) (b bool, e error) {
 	for i := ln; i < n; i++ {
 		log.Println(finalStatus.Stdout[i])
 	}
-
+	log.SetPrefix("")
 	log.Printf("CommandLine Use %s", time.Duration(finalStatus.StopTs-finalStatus.StartTs).String())
 
 	return false, nil
@@ -201,10 +201,22 @@ func MakeChiaPlots(confYaml Config) []string {
 		"-r", strconv.Itoa(confYaml.Threads),
 		"-u", strconv.Itoa(confYaml.Buckets),
 		"-b", strconv.Itoa(confYaml.Buffer),
-		"-t", confYaml.TempPath,
-		"-2", confYaml.Temp2Path,
-		"-d", confYaml.FinalPath,
 	}
+
+	if strings.Compare(confYaml.TempPath, confYaml.Temp2Path) == 0 || strings.Compare(confYaml.Temp2Path, ".") == 0 {
+		ChiaCmd = append(ChiaCmd,
+			"-t", confYaml.TempPath,
+		)
+	} else {
+		ChiaCmd = append(ChiaCmd,
+			"-t", confYaml.TempPath,
+			"-2", confYaml.Temp2Path,
+		)
+	}
+
+	ChiaCmd = append(ChiaCmd,
+		"-d", confYaml.FinalPath,
+	)
 
 	if confYaml.KSize < 32 {
 		ChiaCmd = append(ChiaCmd,
@@ -263,13 +275,26 @@ func MakeChiaPos(confYaml Config) []string {
 	ChiaCmd = append(ChiaCmd,
 		"-i", "0x"+hex.EncodeToString(plotID),
 		"-m", "0x"+hex.EncodeToString(plotMemo),
+		"-f", filename,
 		"-k", strconv.Itoa(confYaml.KSize),
 		"-r", strconv.Itoa(confYaml.Threads),
 		"-u", strconv.Itoa(confYaml.Buckets),
 		"-s", strconv.Itoa(confYaml.Stripes),
 		"-b", strconv.Itoa(confYaml.Buffer),
-		"-t", confYaml.TempPath,
-		"-2", confYaml.Temp2Path,
+	)
+
+	if strings.Compare(confYaml.TempPath, confYaml.Temp2Path) == 0 || strings.Compare(confYaml.Temp2Path, ".") == 0 {
+		ChiaCmd = append(ChiaCmd,
+			"-t", confYaml.TempPath,
+		)
+	} else {
+		ChiaCmd = append(ChiaCmd,
+			"-t", confYaml.TempPath,
+			"-2", confYaml.Temp2Path,
+		)
+	}
+
+	ChiaCmd = append(ChiaCmd,
 		"-d", confYaml.FinalPath,
 	)
 
