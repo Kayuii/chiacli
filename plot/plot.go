@@ -69,8 +69,17 @@ func (p *Plot) Chia(config *Config) error {
 
 	args = MakeChiaPlots(*config)
 
-	RunExec(ChiaExec, args...)
-
+	for i := 1; i <= config.NumPlots; i++ {
+		log.Printf("Plotting %d file \n", i)
+		res, err := RunExec(ChiaExec, args...)
+		if err != nil {
+			log.Println(err)
+			return nil
+		}
+		if res {
+			return nil
+		}
+	}
 	return nil
 }
 
@@ -97,11 +106,21 @@ func (p *Plot) Pos(config *Config) error {
 
 	args = MakeChiaPos(*config)
 
-	RunExec(ChiaExec, args...)
+	for i := 1; i <= config.NumPlots; i++ {
+		log.Printf("Plotting %d file \n", i)
+		res, err := RunExec(ChiaExec, args...)
+		if err != nil {
+			log.Println(err)
+			return nil
+		}
+		if res {
+			return nil
+		}
+	}
 	return nil
 }
 
-func RunExec(ChiaExec string, args ...string) error {
+func RunExec(ChiaExec string, args ...string) (b bool, e error) {
 
 	cmd := cmd.NewCmd(ChiaExec, args...)
 
@@ -136,18 +155,20 @@ func RunExec(ChiaExec string, args ...string) error {
 	select {
 	case <-ctx.Done():
 		log.Println("context done, runner exiting...")
+		return true, nil
 	case finalStatus := <-statusChan:
 		n := len(finalStatus.Stdout)
 		log.Println(finalStatus.Stdout[n-1])
+		return true, nil
 	default:
 	}
 	finalStatus := <-statusChan
 	if finalStatus.Error != nil {
-		log.Println(finalStatus.Error)
+		return true, finalStatus.Error
 	}
-
 	log.Printf("CommandLine Use %s", time.Duration(finalStatus.StopTs-finalStatus.StartTs).String())
-	return nil
+
+	return false, nil
 }
 
 func MakeChiaPlots(confYaml Config) []string {
