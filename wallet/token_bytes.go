@@ -8,6 +8,8 @@ import (
 	"net"
 	"os"
 	"time"
+
+	password "github.com/1800alex/go-utilities-password"
 )
 
 func init() {
@@ -60,8 +62,12 @@ func Hash(s string) uint32 {
 
 // add mac and time.now() as seed
 func Hashseed() int64 {
-	mac_adr, _ := GetMacAddrs()
+	seed, _ := GetRandomSHA256Seed()
 	hostname, _ := os.Hostname()
 	t := time.Now().UnixNano() // int64
-	return int64(Hash(fmt.Sprintf("%d %s %s", t, mac_adr, hostname)))
+	return int64(Hash(fmt.Sprintf("%d %s %s", t, seed, hostname)))
+}
+
+func GetRandomSHA256Seed() (result string, err error) {
+	return password.Generate(16, true, false, false, true)
 }

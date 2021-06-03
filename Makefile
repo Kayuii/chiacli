@@ -54,6 +54,7 @@ deps:
 	$(GOGET) github.com/kilic/bls12-381
 	$(GOGET) golang.org/x/crypto/hkdf
 	$(GOGET) github.com/stretchr/testify/require
+	$(GOGET) github.com/1800alex/go-utilities-password
 
 .PHONY: devel-deps
 devel-deps:

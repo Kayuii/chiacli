@@ -3,6 +3,7 @@ module github.com/kayuii/chiacli
 go 1.16
 
 require (
+	github.com/1800alex/go-utilities-password v0.0.0-20190319130551-878860875294 // indirect
 	github.com/go-cmd/cmd v1.3.0 // indirect
 	github.com/google/logger v1.1.1 // indirect
 	github.com/kilic/bls12-381 v0.1.0 // indirect
