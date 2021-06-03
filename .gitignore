@@ -19,3 +19,5 @@ chiacli*
 # vendor/
 
 log/
+logs/
+*.log
