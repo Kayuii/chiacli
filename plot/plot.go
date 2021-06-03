@@ -5,6 +5,8 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"io"
+	"io/fs"
 	"log"
 	"os"
 	"os/exec"
@@ -23,6 +25,9 @@ import (
 
 type Plot struct {
 	dirName string
+	LogPath string
+	PlotID  string
+	LogFile string
 }
 
 func New() *Plot {
@@ -43,39 +48,52 @@ type Config struct {
 	FinalPath  string `yaml:"FinalPath"`
 	Total      int    `yaml:"Total"`
 	Sleep      int    `yaml:"Sleep"`
-	RunPath    string `yaml:"RunPath"`
+	LogPath    string `yaml:"LogPath"`
 	FarmerKey  string `yaml:"FarmerKey"`
 	PoolKey    string `yaml:"PoolKey"`
 }
 
 func (p *Plot) Chia(config *Config) error {
 	if !IsDir(config.TempPath) {
-		log.Println("获取缓存目录失败")
+		fmt.Println("获取缓存目录失败")
 		os.Exit(0)
 	}
 	if !IsDir(config.Temp2Path) {
-		log.Println("获取缓存目录2失败")
+		fmt.Println("获取缓存目录2失败")
 		os.Exit(0)
 	}
 	if !IsDir(config.FinalPath) {
-		log.Println("获取最终目录失败")
+		fmt.Println("获取最终目录失败")
 		os.Exit(0)
 	}
+	if !IsDir(config.LogPath) {
+		err := os.MkdirAll(config.LogPath, fs.ModePerm)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(0)
+		}
+	}
+	logPath, err := filepath.Abs(config.LogPath)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(0)
+	}
+	p.LogPath = logPath
+
 	var (
 		ChiaExec string = "chia"
 		args     []string
 	)
 
-	log.Printf("chia utils %s by %s <%s> %s \n", chiacli.Version, chiacli.Author, chiacli.Email, chiacli.Github)
-
-	args = MakeChiaPlots(*config)
+	fmt.Printf("chia utils %s by %s <%s> %s \n", chiacli.Version, chiacli.Author, chiacli.Email, chiacli.Github)
 
 	for i := 1; i <= config.NumPlots; i++ {
 		log.SetFlags(log.LstdFlags)
 		log.Printf("Plotting %d file \n", i)
-		res, err := RunExec(ChiaExec, strconv.Itoa(i), args...)
+		args = p.MakeChiaPlots(*config)
+		res, err := p.RunExec(ChiaExec, strconv.Itoa(i), args...)
 		if err != nil {
-			log.Println(err)
+			fmt.Println(err)
 			return nil
 		}
 		if res {
@@ -87,33 +105,44 @@ func (p *Plot) Chia(config *Config) error {
 
 func (p *Plot) Pos(config *Config) error {
 	if !IsDir(config.TempPath) {
-		log.Println("获取缓存目录失败")
+		fmt.Println("获取缓存目录失败")
 		os.Exit(0)
 	}
 	if !IsDir(config.Temp2Path) {
-		log.Println("获取缓存目录2失败")
+		fmt.Println("获取缓存目录2失败")
 		os.Exit(0)
 	}
 	if !IsDir(config.FinalPath) {
-		log.Println("获取最终目录失败")
+		fmt.Println("获取最终目录失败")
 		os.Exit(0)
 	}
+	if !IsDir(config.LogPath) {
+		err := os.MkdirAll(config.LogPath, fs.ModePerm)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(0)
+		}
+	}
+	logPath, err := filepath.Abs(config.LogPath)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(0)
+	}
+	p.LogPath = logPath
 
 	var (
 		ChiaExec string = "ProofOfSpace"
 		args     []string
 	)
 
-	log.Printf("chia utils %s by %s <%s> %s \n", chiacli.Version, chiacli.Author, chiacli.Email, chiacli.Github)
-
-	args = MakeChiaPos(*config)
+	fmt.Printf("chia utils %s by %s <%s> %s \n", chiacli.Version, chiacli.Author, chiacli.Email, chiacli.Github)
 
 	for i := 1; i <= config.NumPlots; i++ {
-		log.SetFlags(log.LstdFlags)
-		log.Printf("Plotting %d file \n", i)
-		res, err := RunExec(ChiaExec, strconv.Itoa(i), args...)
+		fmt.Printf("Plotting %d file \n", i)
+		args = p.MakeChiaPos(*config)
+		res, err := p.RunExec(ChiaExec, strconv.Itoa(i), args...)
 		if err != nil {
-			log.Println(err)
+			fmt.Println(err)
 			return nil
 		}
 		if res {
@@ -125,83 +154,107 @@ func (p *Plot) Pos(config *Config) error {
 	return nil
 }
 
-func RunExec(ChiaExec, plotnum string, args ...string) (b bool, e error) {
+func (p *Plot) RunExec(ChiaExec, plotnum string, args ...string) (b bool, e error) {
 
-	cmd := cmd.NewCmd(ChiaExec, args...)
+	// cmd := cmd.NewCmd(ChiaExec, args...)
+	cmd := cmd.NewCmdOptions(cmd.Options{Streaming: true}, ChiaExec, args...)
 
-	log.Println("commandline: ", ChiaExec, strings.Join(args, " "))
+	fmt.Println("commandline: ", ChiaExec, strings.Join(args, " "))
 
 	ctx, cancel := context.WithCancel(context.Background())
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM, syscall.SIGKILL)
 	go func() {
 		sig := <-sigs
-		log.Println("signal", sig, "called", ". Terminating...")
+		fmt.Println("signal", sig, "called", ". Terminating...")
 		cmd.Stop()
 		cancel()
 	}()
 
-	ticker := time.NewTicker(time.Second)
-	ln := 0
-	le := 0
 	statusChan := cmd.Start()
 
-	log.Printf("Process ID: #%d \n", cmd.Status().PID)
-	log.SetPrefix(fmt.Sprintf("Plot-%s ", plotnum))
-	log.SetFlags(log.Lmsgprefix)
+	fmt.Printf("Process ID: #%d \n", cmd.Status().PID)
+	f, _ := os.OpenFile(fmt.Sprintf("%s/%s", p.LogPath, p.LogFile), os.O_WRONLY|os.O_CREATE|os.O_SYNC|os.O_APPEND, 0644)
+	defer f.Close()
+	logger := log.New(io.MultiWriter(f, os.Stdout), "", log.Lmsgprefix)
 
 	go func() {
-		for range ticker.C {
-			status := cmd.Status()
-			ne := len(status.Stderr)
-			for i := le; i < ne; i++ {
-				log.Println(status.Stderr[i])
+		for cmd.Stdout != nil || cmd.Stderr != nil {
+			select {
+			case line, open := <-cmd.Stdout:
+				if !open {
+					cmd.Stdout = nil
+					continue
+				}
+				logger.Println(line)
+			case line, open := <-cmd.Stderr:
+				if !open {
+					cmd.Stderr = nil
+					continue
+				}
+				fmt.Fprintln(os.Stderr, line)
 			}
-			le = ne
-
-			n := len(status.Stdout)
-			for i := ln; i < n; i++ {
-				log.Println(status.Stdout[i])
-			}
-			ln = n
 		}
 	}()
 
 	select {
 	case <-ctx.Done():
-		log.Println("context done, runner exiting...")
+		fmt.Println("context done, cli exiting...")
 		return true, nil
 	default:
 	}
+
 	finalStatus := <-statusChan
 	if finalStatus.Error != nil {
 		return true, finalStatus.Error
 	}
-	ne := len(finalStatus.Stderr)
-	for i := le; i < ne; i++ {
-		log.Println(finalStatus.Stderr[i])
-	}
-	n := len(finalStatus.Stdout)
-	for i := ln; i < n; i++ {
-		log.Println(finalStatus.Stdout[i])
-	}
-	log.SetPrefix("")
-	log.Printf("CommandLine Use %s", time.Duration(finalStatus.StopTs-finalStatus.StartTs).String())
+
+	logger.Printf("CommandLine Use %s", time.Duration(finalStatus.StopTs-finalStatus.StartTs).String())
 
 	return false, nil
 }
 
-func MakeChiaPlots(confYaml Config) []string {
+func (p *Plot) MakeChiaPlots(confYaml Config) []string {
 	ChiaCmd := []string{
 		"plots",
 		"create",
+	}
+
+	sk := wallet.KeyGen(wallet.TokenBytes(32))
+	farmerPk, err := wallet.DecodePointG1(confYaml.FarmerKey)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(0)
+	}
+	poolPk, err := wallet.DecodePointG1(confYaml.PoolKey)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(0)
+	}
+
+	plot_public_key := wallet.GeneratePlotPublicKey(wallet.MaterSkToLocalSk(sk).GetG1(), farmerPk)
+	plotID := wallet.CalculatePlotIdPk(poolPk, plot_public_key)
+	p.PlotID = hex.EncodeToString(plotID)[:12]
+
+	fmt.Println("plot id: " + hex.EncodeToString(plotID))
+
+	dt_string := time.Now().Format("2006-01-02-15-04")
+	p.LogFile = strings.Join([]string{
+		"plot",
+		"k" + strconv.Itoa(confYaml.KSize),
+		dt_string,
+		p.PlotID + ".log",
+	}, "-")
+
+	ChiaCmd = append(ChiaCmd,
+		"-i", hex.EncodeToString(plotID),
 		"-f", confYaml.FarmerKey,
 		"-p", confYaml.PoolKey,
 		"-k", strconv.Itoa(confYaml.KSize),
 		"-r", strconv.Itoa(confYaml.Threads),
 		"-u", strconv.Itoa(confYaml.Buckets),
 		"-b", strconv.Itoa(confYaml.Buffer),
-	}
+	)
 
 	if strings.Compare(confYaml.TempPath, confYaml.Temp2Path) == 0 || strings.Compare(confYaml.Temp2Path, ".") == 0 {
 		ChiaCmd = append(ChiaCmd,
@@ -232,7 +285,7 @@ func MakeChiaPlots(confYaml Config) []string {
 	return ChiaCmd
 }
 
-func MakeChiaPos(confYaml Config) []string {
+func (p *Plot) MakeChiaPos(confYaml Config) []string {
 	ChiaCmd := []string{
 		"create",
 	}
@@ -240,18 +293,21 @@ func MakeChiaPos(confYaml Config) []string {
 	sk := wallet.KeyGen(wallet.TokenBytes(32))
 	farmerPk, err := wallet.DecodePointG1(confYaml.FarmerKey)
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println(err)
+		os.Exit(0)
 	}
 	poolPk, err := wallet.DecodePointG1(confYaml.PoolKey)
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println(err)
+		os.Exit(0)
 	}
 
 	// log.Printf("sk:" + hex.EncodeToString(sk.Bytes()))
 	plot_public_key := wallet.GeneratePlotPublicKey(wallet.MaterSkToLocalSk(sk).GetG1(), farmerPk)
 	plotID := wallet.CalculatePlotIdPk(poolPk, plot_public_key)
+	p.PlotID = hex.EncodeToString(plotID)[:12]
 
-	log.Printf("plot id: " + hex.EncodeToString(plotID))
+	fmt.Println("plot id: " + hex.EncodeToString(plotID))
 
 	g1 := bls12381.NewG1()
 	plotMemo := make([]byte, 0, 128)
@@ -259,7 +315,7 @@ func MakeChiaPos(confYaml Config) []string {
 	plotMemo = append(plotMemo, g1.ToCompressed(farmerPk)...) // Len 48
 	plotMemo = append(plotMemo, sk.Bytes()...)                // Len 32
 
-	log.Printf("memo: " + hex.EncodeToString(plotID))
+	// fmt.Printf("memo: " + hex.EncodeToString(plotID))
 
 	//  "plot-k{args.size}-{dt_string}-{plot_id}.plot"
 	dt_string := time.Now().Format("2006-01-02-15-04")
@@ -269,8 +325,12 @@ func MakeChiaPos(confYaml Config) []string {
 		dt_string,
 		hex.EncodeToString(plotID) + ".plot",
 	}, "-")
-
-	log.Printf("filename: " + filename)
+	p.LogFile = strings.Join([]string{
+		"plot",
+		"k" + strconv.Itoa(confYaml.KSize),
+		dt_string,
+		p.PlotID + ".log",
+	}, "-")
 
 	ChiaCmd = append(ChiaCmd,
 		"-i", "0x"+hex.EncodeToString(plotID),
@@ -317,7 +377,7 @@ func GetChieExec(ChiaAppPath string) (ChiaExec string) {
 
 func CmdAndChangeDirToFile(commandName string, params []string) {
 	cmd := exec.Command(commandName, params...)
-	log.Println(cmd.Args)
+	fmt.Println(cmd.Args)
 	cmd.Start()
 	cmd.Wait()
 }

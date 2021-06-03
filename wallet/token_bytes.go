@@ -7,7 +7,7 @@ import (
 )
 
 func init() {
-	rand.Seed(time.Now().Unix())
+	rand.Seed(time.Now().UnixNano())
 }
 
 func TokenBytes(n int) []byte {
@@ -28,5 +28,4 @@ func TokenBytes(n int) []byte {
 	}
 	hex.Encode(dst, src)
 	return dst[:n]
-
 }

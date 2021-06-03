@@ -24,7 +24,7 @@ const (
 	FinalPath  = "FinalPath"
 	Total      = "Total"
 	Sleep      = "Sleep"
-	RunPath    = "RunPath"
+	LogPath    = "LogPath"
 	FarmerKey  = "FarmerKey"
 	PoolKey    = "PoolKey"
 )
@@ -99,6 +99,13 @@ var plotFlags = []cli.Flag{
 		Usage:   "Final directory. ",
 	},
 	&cli.StringFlag{
+		Name:    LogPath,
+		Aliases: []string{"l"},
+		Value:   "./logs",
+		Hidden:  true,
+		Usage:   "Logs directory. ",
+	},
+	&cli.StringFlag{
 		Name:    FarmerKey,
 		Aliases: []string{"fpk"},
 		Value:   "96160804d76ccb56d937536935da2f5ecd32b19d55b56c1ca6c9bc24044ef1d118a8d773ec146130354f19a43483bac0",
@@ -125,6 +132,7 @@ func chiaAction(c *cli.Context) error {
 		TempPath:   c.String(TempPath),
 		Temp2Path:  c.String(Temp2Path),
 		FinalPath:  c.String(FinalPath),
+		LogPath:    c.String(LogPath),
 		FarmerKey:  c.String(FarmerKey),
 		PoolKey:    c.String(PoolKey),
 	}
@@ -144,6 +152,7 @@ func chiaposAction(c *cli.Context) error {
 		TempPath:   c.String(TempPath),
 		Temp2Path:  c.String(Temp2Path),
 		FinalPath:  c.String(FinalPath),
+		LogPath:    c.String(LogPath),
 		FarmerKey:  c.String(FarmerKey),
 		PoolKey:    c.String(PoolKey),
 	}
