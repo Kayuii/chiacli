@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"hash/fnv"
 	"math/rand"
-	"net"
 	"os"
 	"time"
 
@@ -35,22 +34,6 @@ func TokenBytes(n int) []byte {
 	}
 	hex.Encode(dst, src)
 	return dst[:n]
-}
-
-func GetMacAddrs() (string, error) {
-	netInterfaces, err := net.Interfaces()
-	if err != nil {
-		return "", err
-	}
-
-	for _, netInterface := range netInterfaces {
-		macAddr := netInterface.HardwareAddr.String()
-		if len(macAddr) == 0 {
-			continue
-		}
-		return macAddr, nil
-	}
-	return "", err
 }
 
 // hash output uint32

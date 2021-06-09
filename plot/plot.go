@@ -5,13 +5,13 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"io"
 	"io/fs"
 	"log"
 	"os"
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"syscall"
@@ -24,14 +24,26 @@ import (
 )
 
 type Plot struct {
-	dirName string
-	LogPath string
-	PlotID  string
-	LogFile string
+	dirName   string
+	LogPath   string
+	PlotID    string
+	LogFile   string
+	Phase     int
+	Len       int
+	Buckets   int
+	Table     int
+	EndPhase  int
+	PhaseTime [4]int64
 }
 
 func New() *Plot {
-	return &Plot{}
+	return &Plot{
+		Phase:    0,
+		Len:      0,
+		Buckets:  0,
+		Table:    0,
+		EndPhase: 0,
+	}
 }
 
 type Config struct {
@@ -156,6 +168,13 @@ func (p *Plot) Pos(config *Config) error {
 
 func (p *Plot) RunExec(ChiaExec, plotnum string, args ...string) (b bool, e error) {
 
+	p.Len = 0
+	p.Phase = 0
+	p.Buckets = 0
+	p.Table = 0
+	p.EndPhase = 1
+	p.PhaseTime = [4]int64{0, 0, 0, 0}
+
 	// cmd := cmd.NewCmd(ChiaExec, args...)
 	cmd := cmd.NewCmdOptions(cmd.Options{Streaming: true}, ChiaExec, args...)
 
@@ -176,7 +195,11 @@ func (p *Plot) RunExec(ChiaExec, plotnum string, args ...string) (b bool, e erro
 	fmt.Printf("Process ID: #%d \n", cmd.Status().PID)
 	f, _ := os.OpenFile(fmt.Sprintf("%s/%s", p.LogPath, p.LogFile), os.O_WRONLY|os.O_CREATE|os.O_SYNC|os.O_APPEND, 0644)
 	defer f.Close()
-	logger := log.New(io.MultiWriter(f, os.Stdout), "", log.Lmsgprefix)
+	// logger := log.New(io.MultiWriter(f, os.Stdout), "", log.Lmsgprefix)
+
+	log.SetOutput(f)
+	log.SetPrefix("")
+	log.SetFlags(log.Lmsgprefix)
 
 	go func() {
 		for cmd.Stdout != nil || cmd.Stderr != nil {
@@ -186,7 +209,9 @@ func (p *Plot) RunExec(ChiaExec, plotnum string, args ...string) (b bool, e erro
 					cmd.Stdout = nil
 					continue
 				}
-				logger.Println(line)
+				p.Len++
+				log.Println(line)
+				p.FormatProgressShow(line)
 			case line, open := <-cmd.Stderr:
 				if !open {
 					cmd.Stderr = nil
@@ -208,8 +233,10 @@ func (p *Plot) RunExec(ChiaExec, plotnum string, args ...string) (b bool, e erro
 	if finalStatus.Error != nil {
 		return true, finalStatus.Error
 	}
+	usedtime := time.Duration(finalStatus.StopTs - finalStatus.StartTs).String()
 
-	logger.Printf("CommandLine Use %s", time.Duration(finalStatus.StopTs-finalStatus.StartTs).String())
+	log.Printf("CommandLine Use %s", usedtime)
+	fmt.Printf("CommandLine Use %s \n", usedtime)
 
 	return false, nil
 }
@@ -364,7 +391,101 @@ func (p *Plot) MakeChiaPos(confYaml Config) []string {
 		)
 	}
 
+	// ChiaCmd = append(ChiaCmd,
+	// 	"-p",
+	// )
+
 	return ChiaCmd
+}
+
+func (p *Plot) FormatProgressShow(line string) {
+	progress := ""
+	phaseTime := ""
+	phase := ""
+
+	if len(line) > 40 {
+		if re, _ := regexp.MatchString("Bucket", line); re {
+			// return
+		}
+	}
+	if re, _ := regexp.MatchString(`^[\t]`, line); re {
+		return
+	}
+
+	rs := regexp.MustCompile(`Starting phase ([\d]+)/4`).FindStringSubmatch(line)
+	if len(rs) > 0 {
+		// p.Phase, _ = strconv.Atoi(rs[1])
+		p.Phase++
+	}
+
+	rs = regexp.MustCompile(`Time for phase ([\d]+) = ([\d.]+) seconds`).FindStringSubmatch(line)
+	if len(rs) > 0 {
+		// endPhase, _ := strconv.Atoi(rs[1])
+		phaseTime, _ := strconv.ParseInt(strings.ReplaceAll(rs[2], ".", ""), 10, 64)
+		p.PhaseTime[p.Phase-1] = phaseTime * 1000
+		progress = fmt.Sprintf("%0.3f", 99/4.0*float64(p.EndPhase))
+		p.EndPhase++
+	}
+
+	phaseTime = fmt.Sprintf("%s / %s / %s / %s", time.Duration(p.PhaseTime[0]).String(), time.Duration(p.PhaseTime[1]).String(), time.Duration(p.PhaseTime[2]).String(), time.Duration(p.PhaseTime[3]).String())
+
+	switch p.Phase {
+	case 0:
+		rs = regexp.MustCompile(`Using ([\d]+) buckets`).FindStringSubmatch(line)
+		if len(rs) > 0 {
+			p.Buckets, _ = strconv.Atoi(rs[1])
+		}
+		break
+	case 1:
+		rs := regexp.MustCompile(`Computing table ([\d]+)`).FindStringSubmatch(line)
+		if len(rs) > 0 {
+			p.Table, _ = strconv.Atoi(rs[1])
+			progress = fmt.Sprintf("%0.3f", 99/4.0/8.0*float64(p.Table))
+		}
+		phase = " phase 1"
+		break
+	case 2:
+		rs := regexp.MustCompile(`Backpropagating on table ([\d]+)`).FindStringSubmatch(line)
+		if len(rs) > 0 {
+			p.Table, _ = strconv.Atoi(rs[1])
+			progress = fmt.Sprintf("%0.3f", (99/4.0/8.0*float64(8-p.Table))+(99/4.0*float64(p.EndPhase-1)))
+		}
+		phase = " phase 2"
+		break
+	case 3:
+		rs := regexp.MustCompile(`Compressing tables ([\d]+)`).FindStringSubmatch(line)
+		if len(rs) > 0 {
+			p.Table, _ = strconv.Atoi(rs[1])
+			progress = fmt.Sprintf("%0.3f", (99/4.0/7.0*float64(p.Table))+(99/4.0*float64(p.EndPhase-1)))
+		}
+		phase = " phase 3"
+		break
+	case 4:
+		phase = " phase 4"
+		break
+	case 5:
+
+		break
+	}
+	if p.EndPhase >= 4 {
+		rs := regexp.MustCompile(`Total time = ([\d.]+) seconds`).FindStringSubmatch(line)
+		if len(rs) > 0 {
+			totaltime, _ := strconv.ParseInt(strings.ReplaceAll(rs[1], ".", ""), 10, 64)
+			fmt.Printf("Plot file Used: %s \n", time.Duration(totaltime*1000).String())
+		}
+		rs = regexp.MustCompile(`Copy time = ([\d.]+) seconds`).FindStringSubmatch(line)
+		if len(rs) > 0 {
+			totaltime, _ := strconv.ParseInt(strings.ReplaceAll(rs[1], ".", ""), 10, 64)
+			fmt.Printf("Copy file Used: %s \n", time.Duration(totaltime*1000).String())
+		}
+		if re := regexp.MustCompile("Renamed final file from").MatchString(line); re {
+			progress = "100.000"
+		}
+	}
+	if len(progress) > 0 {
+		fmt.Printf("Progress: %s ==>%s phase_times %s \n", progress, phase, phaseTime)
+	}
+	fmt.Println(line)
 }
 
 func GetChieExec(ChiaAppPath string) (ChiaExec string) {
