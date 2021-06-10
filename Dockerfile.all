@@ -7,7 +7,6 @@ RUN apk update \
 ENV GOPROXY=https://goproxy.io,direct
 
 COPY . /opt/
-WORKDIR /opt
 
 RUN cd /opt \
   && ls -al \

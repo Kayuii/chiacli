@@ -30,6 +30,8 @@ const (
 	PoolKey    = "PoolKey"
 	LocalSk    = "LocalSk"
 	Memo       = "Memo"
+	FilePath   = "FilePath"
+	Pattern    = "Pattern"
 )
 
 var plotFlags = []cli.Flag{
@@ -176,7 +178,7 @@ var memoFlags = []cli.Flag{
 		Usage:   "The pool public key. ",
 	},
 	&cli.StringFlag{
-		Name:    PoolKey,
+		Name:    LocalSk,
 		Aliases: []string{"sk"},
 		Value:   "",
 		Usage:   "Local sk. ",
@@ -187,6 +189,18 @@ var memoFlags = []cli.Flag{
 		Value:   "",
 		Usage:   "memo. ",
 	},
+	&cli.StringFlag{
+		Name:    FilePath,
+		Aliases: []string{"d", "dir"},
+		Value:   ".",
+		Usage:   "dir. ",
+	},
+	&cli.StringFlag{
+		Name:    Pattern,
+		Aliases: []string{"p", "pattern"},
+		Value:   `.(plot)$`,
+		Usage:   "pattern. ",
+	},
 }
 
 func memoAction(c *cli.Context) error {
@@ -195,8 +209,10 @@ func memoAction(c *cli.Context) error {
 		PoolKey:   c.String(PoolKey),
 		LocalSk:   c.String(LocalSk),
 		Memo:      c.String(Memo),
+		FilePath:  c.String(FilePath),
+		Pattern:   c.String(Pattern),
 	}
-	return fix.New().Print(config)
+	return fix.New().Check(config)
 }
 
 func main() {
@@ -227,9 +243,9 @@ func main() {
 			Flags:   plotFlags,
 		},
 		{
-			Name:    "memo",
-			Aliases: []string{"mm"},
-			Usage:   "memo check",
+			Name:    "Check",
+			Aliases: []string{"check"},
+			Usage:   "check plos",
 			Action:  memoAction,
 			Flags:   memoFlags,
 		},

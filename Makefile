@@ -13,7 +13,7 @@ GOPATH:=$(shell $(GOCMD) env GOPATH)
 u := $(if $(update),-u)
 
 BINARY_NAME:=chiacli
-PACKAGES:=$(shell $(GOLIST) github.com/kayuii/chiacli github.com/kayuii/chiacli/cmd/chiacli github.com/kayuii/chiacli/plot github.com/kayuii/chiacli/fix)
+PACKAGES:=$(shell $(GOLIST) github.com/kayuii/chiacli github.com/kayuii/chiacli/cmd/chiacli github.com/kayuii/chiacli/plot github.com/kayuii/chiacli/fix github.com/kayuii/chiacli/gfind)
 GOFILES:=$(shell find . -name "*.go" -type f)
 
 export GO111MODULE := on

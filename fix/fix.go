@@ -1,9 +1,15 @@
 package fix
 
-import "fmt"
+import (
+	"fmt"
+	"path/filepath"
+	"regexp"
+
+	gfind "github.com/kayuii/chiacli/gfind"
+)
 
 type Fix struct {
-	dirName string
+	DirName string
 	LogPath string
 	PlotID  string
 	LogFile string
@@ -18,34 +24,28 @@ type Config struct {
 	PoolKey   string `yaml:"PoolKey"`
 	LocalSk   string `yaml:"LocalSk"`
 	Memo      string `yaml:"Memo"`
+	FilePath  string `yaml:"FilePath"`
+	Pattern   string `yaml:"Pattern"`
 }
 
-func (f *Fix) Print(config *Config) error {
-	var (
-		ppk  string
-		fpk  string
-		sk   string
-		memo string = config.Memo
-	)
-	if len(config.Memo) > 0 {
+func (f *Fix) Check(config *Config) error {
 
-		switch len(config.Memo) {
-		case 128:
-			fpk = memo[:48]
-			ppk = memo[48:96]
-			sk = memo[96:128]
-			break
-		case 112:
-			break
-		default:
-			fmt.Println("Invalid memo err")
-			return nil
-		}
+	absDir, err := filepath.Abs(config.FilePath)
+	if err != nil {
+		return err
+	}
+	dir := filepath.Clean(absDir)
 
-		fmt.Printf("memo: %s \n", memo)
-		fmt.Printf("ppk: %s \n", ppk)
-		fmt.Printf("fpk: %s \n", fpk)
-		fmt.Printf("sk: %s \n", sk)
+	pattern, err := regexp.Compile(config.Pattern)
+	if err != nil {
+		return err
+	}
+
+	finder := gfind.NewFinder(pattern)
+
+	matches, _ := finder.Find(dir)
+	for _, match := range matches {
+		fmt.Println(match)
 	}
 
 	return nil

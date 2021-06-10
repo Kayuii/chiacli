@@ -2,7 +2,7 @@ package chiacli
 
 // Version of mkbootgen
 const (
-	Version  = "v0.1.0"
+	Version  = "v0.6.0"
 	Author   = "kayuii"
 	AppName  = "chiacli"
 	AppTille = "CHIA_CLI"
