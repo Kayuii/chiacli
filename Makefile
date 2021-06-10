@@ -13,7 +13,7 @@ GOPATH:=$(shell $(GOCMD) env GOPATH)
 u := $(if $(update),-u)
 
 BINARY_NAME:=chiacli
-PACKAGES:=$(shell $(GOLIST) github.com/kayuii/chiacli github.com/kayuii/chiacli/cmd/chiacli github.com/kayuii/chiacli/plot )
+PACKAGES:=$(shell $(GOLIST) github.com/kayuii/chiacli github.com/kayuii/chiacli/cmd/chiacli github.com/kayuii/chiacli/plot github.com/kayuii/chiacli/fix)
 GOFILES:=$(shell find . -name "*.go" -type f)
 
 export GO111MODULE := on
@@ -55,6 +55,7 @@ deps:
 	$(GOGET) golang.org/x/crypto/hkdf
 	$(GOGET) github.com/stretchr/testify/require
 	$(GOGET) github.com/1800alex/go-utilities-password
+	$(GOGET) github.com/chuwt/chia-bls-go
 
 .PHONY: devel-deps
 devel-deps:

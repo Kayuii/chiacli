@@ -4,6 +4,7 @@ go 1.16
 
 require (
 	github.com/1800alex/go-utilities-password v0.0.0-20190319130551-878860875294 // indirect
+	github.com/chuwt/chia-bls-go v0.0.0-20210609071838-cba33cb43dc5 // indirect
 	github.com/go-cmd/cmd v1.3.0 // indirect
 	github.com/google/logger v1.1.1 // indirect
 	github.com/kilic/bls12-381 v0.1.0 // indirect
@@ -13,5 +14,5 @@ require (
 	github.com/urfave/cli v1.22.5 // indirect
 	github.com/urfave/cli/v2 v2.3.0 // indirect
 	golang.org/x/crypto v0.0.0-20210513164829-c07d793c2f9a // indirect
-	golang.org/x/sys v0.0.0-20210601080250-7ecdf8ef093b // indirect
+	golang.org/x/sys v0.0.0-20210608053332-aa57babbf139 // indirect
 )

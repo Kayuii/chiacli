@@ -14,7 +14,7 @@ RUN cd /opt \
   && make build-static
 
 FROM kayuii/chia-plotter:hplotter-v0.11 as hpool
-FROM kayuii/chia-plotter:chia-v1.1.6.1
+FROM kayuii/chia-plotter:chia-v1.1.7
 
 ENV PATH=$PATH:/opt
 WORKDIR /opt

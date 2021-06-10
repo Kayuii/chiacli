@@ -1,6 +1,7 @@
 package wallet
 
 import (
+	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
 	"hash/fnv"
@@ -9,6 +10,7 @@ import (
 	"time"
 
 	password "github.com/1800alex/go-utilities-password"
+	bls "github.com/chuwt/chia-bls-go"
 )
 
 func init() {
@@ -53,4 +55,19 @@ func Hashseed() int64 {
 
 func GetRandomSHA256Seed() (result string, err error) {
 	return password.Generate(16, true, false, false, true)
+}
+
+func CalculatePlotIdPk(poolPk, plotPK []byte) []byte {
+	hash := sha256.New()
+	hash.Write(poolPk)
+	hash.Write(plotPK)
+	return hash.Sum(nil)
+}
+
+func PublicKeyFromHexString(key string) (bls.PublicKey, error) {
+	keyBytes, err := hex.DecodeString(key)
+	if err != nil {
+		return bls.PublicKey{}, err
+	}
+	return bls.NewPublicKey(keyBytes)
 }

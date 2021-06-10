@@ -17,10 +17,10 @@ import (
 	"syscall"
 	"time"
 
+	bls "github.com/chuwt/chia-bls-go"
 	"github.com/go-cmd/cmd"
 	"github.com/kayuii/chiacli"
 	"github.com/kayuii/chiacli/wallet"
-	bls12381 "github.com/kilic/bls12-381"
 )
 
 type Plot struct {
@@ -63,6 +63,7 @@ type Config struct {
 	LogPath    string `yaml:"LogPath"`
 	FarmerKey  string `yaml:"FarmerKey"`
 	PoolKey    string `yaml:"PoolKey"`
+	LocalSk    string `yaml:"LocalSk"`
 }
 
 func (p *Plot) Chia(config *Config) error {
@@ -247,20 +248,21 @@ func (p *Plot) MakeChiaPlots(confYaml Config) []string {
 		"create",
 	}
 
-	sk := wallet.KeyGen(wallet.TokenBytes(32))
-	farmerPk, err := wallet.DecodePointG1(confYaml.FarmerKey)
+	sk := bls.KeyGen(wallet.TokenBytes(32))
+	farmerPk, err := wallet.PublicKeyFromHexString(confYaml.FarmerKey)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(0)
 	}
-	poolPk, err := wallet.DecodePointG1(confYaml.PoolKey)
+	poolPk, err := wallet.PublicKeyFromHexString(confYaml.PoolKey)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(0)
 	}
 
-	plot_public_key := wallet.GeneratePlotPublicKey(wallet.MaterSkToLocalSk(sk).GetG1(), farmerPk)
-	plotID := wallet.CalculatePlotIdPk(poolPk, plot_public_key)
+	plotPk := farmerPk.Add(sk.LocalSk().GetPublicKey())
+	plotID := wallet.CalculatePlotIdPk(poolPk.Bytes(), plotPk.Bytes())
+
 	p.PlotID = hex.EncodeToString(plotID)[:12]
 
 	fmt.Println("plot id: " + hex.EncodeToString(plotID))
@@ -273,8 +275,9 @@ func (p *Plot) MakeChiaPlots(confYaml Config) []string {
 		p.PlotID + ".log",
 	}, "-")
 
+	// "-i", hex.EncodeToString(plotID),
+
 	ChiaCmd = append(ChiaCmd,
-		"-i", hex.EncodeToString(plotID),
 		"-f", confYaml.FarmerKey,
 		"-p", confYaml.PoolKey,
 		"-k", strconv.Itoa(confYaml.KSize),
@@ -317,30 +320,29 @@ func (p *Plot) MakeChiaPos(confYaml Config) []string {
 		"create",
 	}
 
-	sk := wallet.KeyGen(wallet.TokenBytes(32))
-	farmerPk, err := wallet.DecodePointG1(confYaml.FarmerKey)
+	sk := bls.KeyGen(wallet.TokenBytes(32))
+	farmerPk, err := wallet.PublicKeyFromHexString(confYaml.FarmerKey)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(0)
 	}
-	poolPk, err := wallet.DecodePointG1(confYaml.PoolKey)
+	poolPk, err := wallet.PublicKeyFromHexString(confYaml.PoolKey)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(0)
 	}
 
-	// log.Printf("sk:" + hex.EncodeToString(sk.Bytes()))
-	plot_public_key := wallet.GeneratePlotPublicKey(wallet.MaterSkToLocalSk(sk).GetG1(), farmerPk)
-	plotID := wallet.CalculatePlotIdPk(poolPk, plot_public_key)
+	plotPk := farmerPk.Add(sk.LocalSk().GetPublicKey())
+	plotID := wallet.CalculatePlotIdPk(poolPk.Bytes(), plotPk.Bytes())
+
 	p.PlotID = hex.EncodeToString(plotID)[:12]
 
 	fmt.Println("plot id: " + hex.EncodeToString(plotID))
 
-	g1 := bls12381.NewG1()
 	plotMemo := make([]byte, 0, 128)
-	plotMemo = append(plotMemo, g1.ToCompressed(poolPk)...)   // Len 48
-	plotMemo = append(plotMemo, g1.ToCompressed(farmerPk)...) // Len 48
-	plotMemo = append(plotMemo, sk.Bytes()...)                // Len 32
+	plotMemo = append(plotMemo, poolPk.Bytes()...)   // Len 48
+	plotMemo = append(plotMemo, farmerPk.Bytes()...) // Len 48
+	plotMemo = append(plotMemo, sk.Bytes()...)       // Len 32
 
 	// fmt.Printf("memo: " + hex.EncodeToString(plotID))
 
@@ -403,14 +405,14 @@ func (p *Plot) FormatProgressShow(line string) {
 	phaseTime := ""
 	phase := ""
 
-	if len(line) > 40 {
-		if re, _ := regexp.MatchString("Bucket", line); re {
-			// return
-		}
-	}
-	if re, _ := regexp.MatchString(`^[\t]`, line); re {
-		return
-	}
+	// if len(line) > 40 {
+	// 	if re, _ := regexp.MatchString("Bucket", line); re {
+	// 		// return
+	// 	}
+	// }
+	// if re, _ := regexp.MatchString(`^[\t]`, line); re {
+	// 	return
+	// }
 
 	rs := regexp.MustCompile(`Starting phase ([\d]+)/4`).FindStringSubmatch(line)
 	if len(rs) > 0 {
@@ -422,7 +424,7 @@ func (p *Plot) FormatProgressShow(line string) {
 	if len(rs) > 0 {
 		// endPhase, _ := strconv.Atoi(rs[1])
 		phaseTime, _ := strconv.ParseInt(strings.ReplaceAll(rs[2], ".", ""), 10, 64)
-		p.PhaseTime[p.Phase-1] = phaseTime * 1000
+		p.PhaseTime[p.Phase-1] = phaseTime * 1000 * 1000
 		progress = fmt.Sprintf("%0.3f", 99/4.0*float64(p.EndPhase))
 		p.EndPhase++
 	}
@@ -442,7 +444,7 @@ func (p *Plot) FormatProgressShow(line string) {
 			p.Table, _ = strconv.Atoi(rs[1])
 			progress = fmt.Sprintf("%0.3f", 99/4.0/8.0*float64(p.Table))
 		}
-		phase = " phase 1"
+		phase = " [P1]"
 		break
 	case 2:
 		rs := regexp.MustCompile(`Backpropagating on table ([\d]+)`).FindStringSubmatch(line)
@@ -450,7 +452,7 @@ func (p *Plot) FormatProgressShow(line string) {
 			p.Table, _ = strconv.Atoi(rs[1])
 			progress = fmt.Sprintf("%0.3f", (99/4.0/8.0*float64(8-p.Table))+(99/4.0*float64(p.EndPhase-1)))
 		}
-		phase = " phase 2"
+		phase = " [P2]"
 		break
 	case 3:
 		rs := regexp.MustCompile(`Compressing tables ([\d]+)`).FindStringSubmatch(line)
@@ -458,10 +460,10 @@ func (p *Plot) FormatProgressShow(line string) {
 			p.Table, _ = strconv.Atoi(rs[1])
 			progress = fmt.Sprintf("%0.3f", (99/4.0/7.0*float64(p.Table))+(99/4.0*float64(p.EndPhase-1)))
 		}
-		phase = " phase 3"
+		phase = " [P3]"
 		break
 	case 4:
-		phase = " phase 4"
+		phase = " [P4]"
 		break
 	case 5:
 

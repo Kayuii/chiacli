@@ -13,5 +13,5 @@ RUN cd /opt \
   && ls -al \
   && make build-static
 
-FROM kayuii/chia-plotter:chia-v1.1.6
+FROM kayuii/chia-plotter:chia-v1.1.7
 COPY --from=builder /opt/chiacli-static /root/chiacli
