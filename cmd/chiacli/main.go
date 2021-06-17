@@ -225,19 +225,19 @@ var fastplotFlags = []cli.Flag{
 	},
 	&cli.StringFlag{
 		Name:    FarmerKey,
-		Aliases: []string{"p"},
+		Aliases: []string{"fpk"},
 		Value:   "96160804d76ccb56d937536935da2f5ecd32b19d55b56c1ca6c9bc24044ef1d118a8d773ec146130354f19a43483bac0",
 		Usage:   "The farmer public key. ",
 	},
 	&cli.StringFlag{
 		Name:    PoolKey,
-		Aliases: []string{"f"},
+		Aliases: []string{"ppk"},
 		Value:   "b6e26610006b42b33bbc458dc42e8a41bcf25403382dd0074d61679a792f3570e54c22bca6d9863f6c4b22a68355e614",
 		Usage:   "The pool public key. ",
 	},
 }
 
-func fastchiaAction(c *cli.Context) error {
+func fastposAction(c *cli.Context) error {
 	config := &plot.Config{
 		NumPlots:  c.Int(NumPlots),
 		KSize:     c.Int(KSize),
@@ -326,10 +326,10 @@ func main() {
 			Flags:   plotFlags,
 		},
 		{
-			Name:    "FastChia",
-			Aliases: []string{"fastchia"},
+			Name:    "FastPos",
+			Aliases: []string{"fastpos"},
 			Usage:   "from madMAx43v3r/chia-plotter",
-			Action:  fastchiaAction,
+			Action:  fastposAction,
 			Flags:   fastplotFlags,
 		},
 		{
