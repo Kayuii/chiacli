@@ -167,6 +167,57 @@ func (p *Plot) Pos(config *Config) error {
 	return nil
 }
 
+func (p *Plot) FastPos(config *Config) error {
+	if !IsDir(config.TempPath) {
+		fmt.Println("获取缓存目录失败")
+		os.Exit(0)
+	}
+	if !IsDir(config.Temp2Path) {
+		fmt.Println("获取缓存目录2失败")
+		os.Exit(0)
+	}
+	if !IsDir(config.FinalPath) {
+		fmt.Println("获取最终目录失败")
+		os.Exit(0)
+	}
+	if !IsDir(config.LogPath) {
+		err := os.MkdirAll(config.LogPath, fs.ModePerm)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(0)
+		}
+	}
+	logPath, err := filepath.Abs(config.LogPath)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(0)
+	}
+	p.LogPath = logPath
+
+	var (
+		ChiaExec string = "fastpos"
+		args     []string
+	)
+
+	fmt.Printf("chia utils %s by %s <%s> %s \n", chiacli.Version, chiacli.Author, chiacli.Email, chiacli.Github)
+
+	for i := 1; i <= config.NumPlots; i++ {
+		fmt.Printf("Plotting %d file \n", i)
+		args = p.MakeFastPos(*config)
+		res, err := p.RunExec(ChiaExec, strconv.Itoa(i), args...)
+		if err != nil {
+			fmt.Println(err)
+			return nil
+		}
+		if res {
+			return nil
+		}
+	}
+
+	log.SetFlags(log.LstdFlags)
+	return nil
+}
+
 func (p *Plot) RunExec(ChiaExec, plotnum string, args ...string) (b bool, e error) {
 
 	p.Len = 0
@@ -396,6 +447,65 @@ func (p *Plot) MakeChiaPos(confYaml Config) []string {
 	// ChiaCmd = append(ChiaCmd,
 	// 	"-p",
 	// )
+
+	return ChiaCmd
+}
+
+func (p *Plot) MakeFastPos(confYaml Config) []string {
+	ChiaCmd := []string{
+		"create",
+	}
+
+	sk := bls.KeyGen(wallet.TokenBytes(32))
+	farmerPk, err := wallet.PublicKeyFromHexString(confYaml.FarmerKey)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(0)
+	}
+	poolPk, err := wallet.PublicKeyFromHexString(confYaml.PoolKey)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(0)
+	}
+
+	plotPk := farmerPk.Add(sk.LocalSk().GetPublicKey())
+	plotID := wallet.CalculatePlotIdPk(poolPk.Bytes(), plotPk.Bytes())
+
+	p.PlotID = hex.EncodeToString(plotID)[:12]
+
+	// fmt.Printf("memo: " + hex.EncodeToString(plotID))
+
+	//  "plot-k{args.size}-{dt_string}-{plot_id}.plot"
+	dt_string := time.Now().Format("2006-01-02-15-04")
+
+	p.LogFile = strings.Join([]string{
+		"plot",
+		"k" + strconv.Itoa(confYaml.KSize),
+		dt_string,
+		p.PlotID + ".log",
+	}, "-")
+
+	ChiaCmd = append(ChiaCmd,
+		"-f", confYaml.FarmerKey,
+		"-p", confYaml.PoolKey,
+		"-r", strconv.Itoa(confYaml.Threads),
+		"-u", strconv.Itoa(confYaml.Buckets),
+	)
+
+	if strings.Compare(confYaml.TempPath, confYaml.Temp2Path) == 0 || strings.Compare(confYaml.Temp2Path, ".") == 0 {
+		ChiaCmd = append(ChiaCmd,
+			"-t", confYaml.TempPath,
+		)
+	} else {
+		ChiaCmd = append(ChiaCmd,
+			"-t", confYaml.TempPath,
+			"-2", confYaml.Temp2Path,
+		)
+	}
+
+	ChiaCmd = append(ChiaCmd,
+		"-d", confYaml.FinalPath,
+	)
 
 	return ChiaCmd
 }
