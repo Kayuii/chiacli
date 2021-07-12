@@ -88,19 +88,19 @@ var plotFlags = []cli.Flag{
 	&cli.StringFlag{
 		Name:    TempPath,
 		Aliases: []string{"t"},
-		Value:   "./",
+		Value:   ".",
 		Usage:   "Temporary directory. ",
 	},
 	&cli.StringFlag{
 		Name:    Temp2Path,
 		Aliases: []string{"2"},
-		Value:   "./",
+		Value:   ".",
 		Usage:   "Second Temporary directory. ",
 	},
 	&cli.StringFlag{
 		Name:    FinalPath,
 		Aliases: []string{"d"},
-		Value:   "./",
+		Value:   ".",
 		Usage:   "Final directory. ",
 	},
 	&cli.StringFlag{
@@ -201,19 +201,19 @@ var fastplotFlags = []cli.Flag{
 	&cli.StringFlag{
 		Name:    TempPath,
 		Aliases: []string{"t"},
-		Value:   "./",
+		Value:   ".",
 		Usage:   "Temporary directory. ",
 	},
 	&cli.StringFlag{
 		Name:    Temp2Path,
 		Aliases: []string{"2"},
-		Value:   "./",
+		Value:   ".",
 		Usage:   "Second Temporary directory. ",
 	},
 	&cli.StringFlag{
 		Name:    FinalPath,
 		Aliases: []string{"d"},
-		Value:   "./",
+		Value:   ".",
 		Usage:   "Final directory. ",
 	},
 	&cli.StringFlag{

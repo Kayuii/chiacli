@@ -494,12 +494,12 @@ func (p *Plot) MakeFastPos(confYaml Config) []string {
 
 	if strings.Compare(confYaml.TempPath, confYaml.Temp2Path) == 0 || strings.Compare(confYaml.Temp2Path, ".") == 0 {
 		ChiaCmd = append(ChiaCmd,
-			"-t", confYaml.TempPath,
+			"-t", confYaml.TempPath+"/",
 		)
 	} else {
 		ChiaCmd = append(ChiaCmd,
-			"-t", confYaml.TempPath,
-			"-2", confYaml.Temp2Path,
+			"-t", confYaml.TempPath+"/",
+			"-2", confYaml.Temp2Path+"/",
 		)
 	}
 
@@ -514,15 +514,6 @@ func (p *Plot) FormatProgressShow(line string) {
 	progress := ""
 	phaseTime := ""
 	phase := ""
-
-	// if len(line) > 40 {
-	// 	if re, _ := regexp.MatchString("Bucket", line); re {
-	// 		// return
-	// 	}
-	// }
-	// if re, _ := regexp.MatchString(`^[\t]`, line); re {
-	// 	return
-	// }
 
 	rs := regexp.MustCompile(`Starting phase ([\d]+)/4`).FindStringSubmatch(line)
 	if len(rs) > 0 {
