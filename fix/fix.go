@@ -20,12 +20,12 @@ func New() *Fix {
 }
 
 type Config struct {
-	FarmerKey string `yaml:"FarmerKey"`
-	PoolKey   string `yaml:"PoolKey"`
-	LocalSk   string `yaml:"LocalSk"`
-	Memo      string `yaml:"Memo"`
-	FilePath  string `yaml:"FilePath"`
-	Pattern   string `yaml:"Pattern"`
+	FarmePublicKey string `yaml:"FarmePublicKey"`
+	PoolPublicKey  string `yaml:"PoolPublicKey"`
+	LocalSk        string `yaml:"LocalSk"`
+	Memo           string `yaml:"Memo"`
+	FilePath       string `yaml:"FilePath"`
+	Pattern        string `yaml:"Pattern"`
 }
 
 func (f *Fix) Check(config *Config) error {

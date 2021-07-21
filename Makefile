@@ -56,6 +56,7 @@ deps:
 	$(GOGET) github.com/stretchr/testify/require
 	$(GOGET) github.com/1800alex/go-utilities-password
 	$(GOGET) github.com/chuwt/chia-bls-go
+	$(GOGET) github.com/alecthomas/kingpin
 
 .PHONY: devel-deps
 devel-deps:

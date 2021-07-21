@@ -47,23 +47,24 @@ func New() *Plot {
 }
 
 type Config struct {
-	NumPlots   int    `yaml:"NumPlots"`
-	KSize      int    `yaml:"KSize"`
-	Stripes    int    `yaml:"Stripes"`
-	Buffer     int    `yaml:"Buffer"`
-	Threads    int    `yaml:"Threads"`
-	Buckets    int    `yaml:"Buckets"`
-	NoBitfield bool   `yaml:"NoBitfield"`
-	Progress   bool   `yaml:"Progress"`
-	TempPath   string `yaml:"TempPath"`
-	Temp2Path  string `yaml:"Temp2Path"`
-	FinalPath  string `yaml:"FinalPath"`
-	Total      int    `yaml:"Total"`
-	Sleep      int    `yaml:"Sleep"`
-	LogPath    string `yaml:"LogPath"`
-	FarmerKey  string `yaml:"FarmerKey"`
-	PoolKey    string `yaml:"PoolKey"`
-	LocalSk    string `yaml:"LocalSk"`
+	NumPlots            int    `yaml:"NumPlots"`
+	KSize               int    `yaml:"KSize"`
+	Stripes             int    `yaml:"Stripes"`
+	Buffer              int    `yaml:"Buffer"`
+	Threads             int    `yaml:"Threads"`
+	Buckets             int    `yaml:"Buckets"`
+	NoBitfield          bool   `yaml:"NoBitfield"`
+	Progress            bool   `yaml:"Progress"`
+	TempPath            string `yaml:"TempPath"`
+	Temp2Path           string `yaml:"Temp2Path"`
+	FinalPath           string `yaml:"FinalPath"`
+	Total               int    `yaml:"Total"`
+	Sleep               int    `yaml:"Sleep"`
+	LogPath             string `yaml:"LogPath"`
+	FarmePublicKey      string `yaml:"FarmePublicKey"`
+	PoolPublicKey       string `yaml:"PoolPublicKey"`
+	PoolContractAddress string `yaml:"PoolContractAddress"`
+	LocalSk             string `yaml:"LocalSk"`
 }
 
 func (p *Plot) Chia(config *Config) error {
@@ -300,12 +301,12 @@ func (p *Plot) MakeChiaPlots(confYaml Config) []string {
 	}
 
 	sk := bls.KeyGen(wallet.TokenBytes(32))
-	farmerPk, err := wallet.PublicKeyFromHexString(confYaml.FarmerKey)
+	farmerPk, err := wallet.PublicKeyFromHexString(confYaml.FarmePublicKey)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(0)
 	}
-	poolPk, err := wallet.PublicKeyFromHexString(confYaml.PoolKey)
+	poolPk, err := wallet.PublicKeyFromHexString(confYaml.PoolPublicKey)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(0)
@@ -329,8 +330,8 @@ func (p *Plot) MakeChiaPlots(confYaml Config) []string {
 	// "-i", hex.EncodeToString(plotID),
 
 	ChiaCmd = append(ChiaCmd,
-		"-f", confYaml.FarmerKey,
-		"-p", confYaml.PoolKey,
+		"-f", confYaml.FarmePublicKey,
+		"-p", confYaml.PoolPublicKey,
 		"-k", strconv.Itoa(confYaml.KSize),
 		"-r", strconv.Itoa(confYaml.Threads),
 		"-u", strconv.Itoa(confYaml.Buckets),
@@ -372,12 +373,12 @@ func (p *Plot) MakeChiaPos(confYaml Config) []string {
 	}
 
 	sk := bls.KeyGen(wallet.TokenBytes(32))
-	farmerPk, err := wallet.PublicKeyFromHexString(confYaml.FarmerKey)
+	farmerPk, err := wallet.PublicKeyFromHexString(confYaml.FarmePublicKey)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(0)
 	}
-	poolPk, err := wallet.PublicKeyFromHexString(confYaml.PoolKey)
+	poolPk, err := wallet.PublicKeyFromHexString(confYaml.PoolPublicKey)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(0)
@@ -457,12 +458,12 @@ func (p *Plot) MakeFastPos(confYaml Config) []string {
 	}
 
 	sk := bls.KeyGen(wallet.TokenBytes(32))
-	farmerPk, err := wallet.PublicKeyFromHexString(confYaml.FarmerKey)
+	farmerPk, err := wallet.PublicKeyFromHexString(confYaml.FarmePublicKey)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(0)
 	}
-	poolPk, err := wallet.PublicKeyFromHexString(confYaml.PoolKey)
+	poolPk, err := wallet.PublicKeyFromHexString(confYaml.PoolPublicKey)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(0)
@@ -473,9 +474,6 @@ func (p *Plot) MakeFastPos(confYaml Config) []string {
 
 	p.PlotID = hex.EncodeToString(plotID)[:12]
 
-	// fmt.Printf("memo: " + hex.EncodeToString(plotID))
-
-	//  "plot-k{args.size}-{dt_string}-{plot_id}.plot"
 	dt_string := time.Now().Format("2006-01-02-15-04")
 
 	p.LogFile = strings.Join([]string{
@@ -485,9 +483,18 @@ func (p *Plot) MakeFastPos(confYaml Config) []string {
 		p.PlotID + ".log",
 	}, "-")
 
+	if strings.Compare(confYaml.PoolContractAddress, "") == 0 {
+		ChiaCmd = append(ChiaCmd,
+			"-p", confYaml.PoolPublicKey,
+		)
+	} else {
+		ChiaCmd = append(ChiaCmd,
+			"-c", confYaml.PoolContractAddress,
+		)
+	}
+
 	ChiaCmd = append(ChiaCmd,
-		"-f", confYaml.FarmerKey,
-		"-p", confYaml.PoolKey,
+		"-f", confYaml.FarmePublicKey,
 		"-r", strconv.Itoa(confYaml.Threads),
 		"-u", strconv.Itoa(confYaml.Buckets),
 	)

@@ -1,0 +1,25 @@
+package base
+
+const (
+	NumPlots            = "NumPlots"
+	KSize               = "KSize"
+	Stripes             = "Stripes"
+	Buffer              = "Buffer"
+	Threads             = "Threads"
+	Buckets             = "Buckets"
+	NoBitfield          = "NoBitfield"
+	Progress            = "Progress"
+	TempPath            = "TempPath"
+	Temp2Path           = "Temp2Path"
+	FinalPath           = "FinalPath"
+	Total               = "Total"
+	Sleep               = "Sleep"
+	LogPath             = "LogPath"
+	FarmePublicKey      = "FarmePublicKey"
+	PoolPublicKey       = "PoolPublicKey"
+	PoolContractAddress = "PoolContractAddress"
+	LocalSk             = "LocalSk"
+	Memo                = "Memo"
+	FilePath            = "FilePath"
+	Pattern             = "Pattern"
+)
