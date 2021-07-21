@@ -213,6 +213,8 @@ func (p *Plot) FastPos(config *Config) error {
 		if res {
 			return nil
 		}
+
+		time.Sleep(time.Duration(config.Sleep) * time.Second)
 	}
 
 	log.SetFlags(log.LstdFlags)

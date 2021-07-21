@@ -57,6 +57,7 @@ deps:
 	$(GOGET) github.com/1800alex/go-utilities-password
 	$(GOGET) github.com/chuwt/chia-bls-go
 	$(GOGET) github.com/alecthomas/kingpin
+	$(GOGET) github.com/massnetorg/mass-core
 
 .PHONY: devel-deps
 devel-deps:

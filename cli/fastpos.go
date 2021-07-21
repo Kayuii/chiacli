@@ -85,7 +85,7 @@ var fastplotFlags = []cli.Flag{
 	&cli.IntFlag{
 		Name:    Sleep,
 		Aliases: []string{"s"},
-		Value:   1,
+		Value:   60,
 		Hidden:  true,
 		Usage:   "Sleep. ",
 	},
