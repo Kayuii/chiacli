@@ -27,6 +27,12 @@ var fastplotFlags = []cli.Flag{
 		Usage:   "Number of threads. ",
 	},
 	&cli.IntFlag{
+		Name:    Rmulti2,
+		Aliases: []string{"K"},
+		Value:   1,
+		Usage:   "Thread multiplier for P2. ",
+	},
+	&cli.IntFlag{
 		Name:    Buckets,
 		Aliases: []string{"u"},
 		Hidden:  true,
@@ -35,7 +41,7 @@ var fastplotFlags = []cli.Flag{
 	},
 	&cli.BoolFlag{
 		Name:    Progress,
-		Aliases: []string{"pp"},
+		Aliases: []string{"P"},
 		Value:   false,
 		Usage:   "Display progress percentage during plotting. ",
 	},
@@ -96,6 +102,7 @@ func fastposAction(c *cli.Context) error {
 		NumPlots:            c.Int(NumPlots),
 		KSize:               c.Int(KSize),
 		Threads:             c.Int(Threads),
+		Rmulti2:             c.Int(Rmulti2),
 		Buckets:             c.Int(Buckets),
 		Progress:            c.Bool(Progress),
 		TempPath:            c.String(TempPath),
@@ -105,6 +112,7 @@ func fastposAction(c *cli.Context) error {
 		FarmePublicKey:      c.String(FarmePublicKey),
 		PoolPublicKey:       c.String(PoolPublicKey),
 		PoolContractAddress: c.String(PoolContractAddress),
+		Sleep:               c.Int(Sleep),
 	}
 	return plot.New().FastPos(config)
 }

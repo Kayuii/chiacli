@@ -6,6 +6,7 @@ const (
 	Stripes             = "Stripes"
 	Buffer              = "Buffer"
 	Threads             = "Threads"
+	Rmulti2             = "Rmulti2"
 	Buckets             = "Buckets"
 	NoBitfield          = "NoBitfield"
 	Progress            = "Progress"

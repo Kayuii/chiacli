@@ -52,7 +52,7 @@ var plotFlags = []cli.Flag{
 	},
 	&cli.BoolFlag{
 		Name:    Progress,
-		Aliases: []string{"pp"},
+		Aliases: []string{"P"},
 		Value:   false,
 		Usage:   "Display progress percentage during plotting. ",
 	},

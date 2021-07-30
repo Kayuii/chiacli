@@ -32,7 +32,9 @@ build-mini: deps
 
 .PHONY: build-static
 build-static: deps
-	CGO_ENABLED=0 $(GOBUILD) -ldflags '-extldflags=-static -w -s ' -o $(BINARY_NAME)-static ./cmd/chiacli
+	CGO_ENABLED=0 $(GOBUILD) -ldflags '-linkmode "external" -extldflags "-static" -w -s ' -o $(BINARY_NAME)-static ./cmd/chiacli
+
+# CGO_ENABLED=0 $(GOBUILD) -ldflags '-extldflags=-static -w -s ' -o $(BINARY_NAME)-static ./cmd/chiacli
 
 .PHONY: install
 install: deps
@@ -45,18 +47,15 @@ clean:
 
 .PHONY: deps
 deps:
-	$(GOGET) github.com/urfave/cli
 	$(GOGET) github.com/urfave/cli/v2
 	$(GOGET) github.com/mackerelio/go-osstat/memory
 	$(GOGET) golang.org/x/sys/unix
-	$(GOGET) github.com/google/logger
 	$(GOGET) github.com/go-cmd/cmd
 	$(GOGET) github.com/kilic/bls12-381
 	$(GOGET) golang.org/x/crypto/hkdf
 	$(GOGET) github.com/stretchr/testify/require
 	$(GOGET) github.com/1800alex/go-utilities-password
 	$(GOGET) github.com/chuwt/chia-bls-go
-	$(GOGET) github.com/alecthomas/kingpin
 	$(GOGET) github.com/massnetorg/mass-core
 
 .PHONY: devel-deps

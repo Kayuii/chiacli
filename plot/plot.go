@@ -52,6 +52,7 @@ type Config struct {
 	Stripes             int    `yaml:"Stripes"`
 	Buffer              int    `yaml:"Buffer"`
 	Threads             int    `yaml:"Threads"`
+	Rmulti2             int    `yaml:"Rmulti2"`
 	Buckets             int    `yaml:"Buckets"`
 	NoBitfield          bool   `yaml:"NoBitfield"`
 	Progress            bool   `yaml:"Progress"`
@@ -213,7 +214,7 @@ func (p *Plot) FastPos(config *Config) error {
 		if res {
 			return nil
 		}
-
+		fmt.Printf("Sleep %d sec \n", config.Sleep)
 		time.Sleep(time.Duration(config.Sleep) * time.Second)
 	}
 
@@ -498,6 +499,7 @@ func (p *Plot) MakeFastPos(confYaml Config) []string {
 	ChiaCmd = append(ChiaCmd,
 		"-f", confYaml.FarmePublicKey,
 		"-r", strconv.Itoa(confYaml.Threads),
+		"-K", strconv.Itoa(confYaml.Rmulti2),
 		"-u", strconv.Itoa(confYaml.Buckets),
 	)
 
