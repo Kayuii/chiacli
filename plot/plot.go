@@ -515,7 +515,7 @@ func (p *Plot) MakeFastPos(confYaml Config) []string {
 	}
 
 	ChiaCmd = append(ChiaCmd,
-		"-d", confYaml.FinalPath,
+		"-d", confYaml.FinalPath+"/",
 	)
 
 	return ChiaCmd
