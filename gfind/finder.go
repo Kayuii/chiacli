@@ -1,9 +1,7 @@
 package gfind
 
 import (
-	"fmt"
 	"io/ioutil"
-	"os"
 	"path/filepath"
 	"regexp"
 	"runtime"
@@ -37,7 +35,6 @@ func (finder *Finder) find(dir string) error {
 	if err != nil {
 		return err
 	}
-
 	for _, file := range files {
 		filePath := filepath.Join(dir, file.Name())
 		if file.IsDir() {
@@ -48,7 +45,6 @@ func (finder *Finder) find(dir string) error {
 			finder.mutex.Unlock()
 		}
 	}
-
 	return nil
 }
 
@@ -67,7 +63,7 @@ func (finder *Finder) Find(startDir string) ([]string, error) {
 	defer wg.Wait()
 	defer close(finder.work)
 
-	fmt.Printf("Using %d workers !\n", finder.numWorkers)
+	// fmt.Printf("Using %d workers !\n", finder.numWorkers)
 	for i := 0; i < finder.numWorkers; i++ {
 		wg.Add(1)
 		go finder.worker(wg)
@@ -103,7 +99,8 @@ func (finder *Finder) Find(startDir string) ([]string, error) {
 		case err = <-finder.errors:
 			finder.dispatched--
 			if err != nil {
-				fmt.Fprintf(os.Stderr, err.Error())
+				return nil, err
+				// fmt.Fprintln(os.Stderr, err.Error())
 			}
 		default:
 			if finder.dispatched == 0 && forDispatch.Empty() {

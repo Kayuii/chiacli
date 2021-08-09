@@ -11,6 +11,7 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/kayuii/chiacli/gfind"
 	"github.com/massnetorg/mass-core/logging"
 	"github.com/massnetorg/mass-core/massutil"
 	"github.com/massnetorg/mass-core/poc"
@@ -19,11 +20,11 @@ import (
 )
 
 var (
-	getBindingListArgFilename     string
-	getBindingListFlagOverwrite   bool
-	getBindingListFlagListAll     bool
-	getBindingListFlagKeystore    string
-	getBindingListFlagDirectories []string
+	getBindingListArgFilename                      string
+	getBindingListFlagOverwrite                    bool
+	getBindingListFlagKeystore                     string
+	getBindingListFlagDirectories                  []string
+	getBindingListFlagDirectoriesAndSubdirectories string
 )
 
 func getOfflineBindingList() (list *massutil.BindingList, err error) {
@@ -45,7 +46,12 @@ func getOfflineBindingList() (list *massutil.BindingList, err error) {
 	var plots []massutil.BindingPlot
 	var defaultCount, chiaCount uint64
 
-	plots, err = getOfflineBindingListV2(interruptCh, absDirectories, getBindingListFlagListAll, getBindingListFlagKeystore)
+	if len(getBindingListFlagDirectoriesAndSubdirectories) == 0 {
+		plots, err = getOfflineBindingListV2(interruptCh, absDirectories, true, getBindingListFlagKeystore)
+	} else {
+		plots, err = getOfflineBindingListV3(interruptCh, getBindingListFlagDirectoriesAndSubdirectories, getBindingListFlagKeystore)
+	}
+
 	chiaCount = uint64(len(plots))
 
 	if err != nil {
@@ -151,6 +157,94 @@ func getOfflineBindingListV2(interruptCh chan os.Signal, dirs []string, all bool
 	return plots, err
 }
 
+func getOfflineBindingListV3(interruptCh chan os.Signal, dir string, keystoreFile string) ([]massutil.BindingPlot, error) {
+	regStrB, suffixB, regStrC := `PLOT-K\d{2}-\d{4}(-\d{2}){4}-[A-F0-9]{64}\.PLOT$`, ".PLOT", `.*\.plot$`
+	regExpB, err := regexp.Compile(regStrB)
+	if err != nil {
+		return nil, err
+	}
+	regExpC, err := regexp.Compile(regStrC)
+	if err != nil {
+		return nil, err
+	}
+
+	var keystore *chiawallet.Keystore
+	if keystoreFile != "" {
+		if keystore, err = chiawallet.NewKeystoreFromFile(keystoreFile); err != nil {
+			return nil, err
+		}
+	}
+
+	var ownablePlot = func(info *massutil.MassDBInfoV2) bool {
+		if keystore == nil {
+			return true
+		}
+		if _, err := keystore.GetPoolPrivateKey(info.PoolPublicKey); err != nil {
+			return false
+		}
+		if _, err := keystore.GetFarmerPrivateKey(info.FarmerPublicKey); err != nil {
+			return false
+		}
+		return true
+	}
+
+	var plots []massutil.BindingPlot
+
+	absdir, err1 := filepath.Abs(dir)
+	if err1 != nil {
+		return nil, err
+	}
+	cleandir := filepath.Clean(absdir)
+	finder := gfind.NewFinder(regExpC)
+	files, err := finder.Find(cleandir)
+	if err != nil {
+		return nil, err
+	}
+
+	logging.CPrint(logging.INFO, "searching for chia plot files", logging.LogFormat{"dir": cleandir})
+	dirSearched := 0
+	for _, fi := range files {
+		select {
+		case <-interruptCh:
+			logging.CPrint(logging.WARN, "cancel searching plot files")
+			return nil, nil
+		default:
+		}
+
+		_, fileName := filepath.Split(fi)
+		if !strings.HasSuffix(strings.ToUpper(fileName), suffixB) || !regExpB.MatchString(strings.ToUpper(fileName)) {
+			continue
+		}
+
+		info, err := massutil.NewMassDBInfoV2FromFile(fi)
+		if err != nil {
+			logging.CPrint(logging.WARN, "fail to read chia plot info", logging.LogFormat{"err": err})
+			continue
+		}
+
+		if !ownablePlot(info) {
+			continue
+		} else {
+			target, err := massutil.GetChiaPlotBindingTarget(info.PlotID, info.K)
+			if err != nil {
+				return nil, err
+			}
+			plots = append(plots, massutil.BindingPlot{
+				Target: target,
+				Type:   uint8(poc.ProofTypeChia),
+				Size:   uint8(info.K),
+			})
+			dirSearched += 1
+		}
+	}
+	logging.CPrint(logging.INFO, "loaded chia plot files from directory", logging.LogFormat{
+		"dir":              cleandir,
+		"total_plot_count": dirSearched,
+	})
+
+	return plots, err
+}
+
 func Target(c *cli.Context) error {
 	if c.NArg() < 1 {
 		return cli.ShowAppHelp(c)
@@ -167,9 +261,9 @@ func Target(c *cli.Context) error {
 	}
 	getBindingListArgFilename = abs
 	getBindingListFlagOverwrite = c.Bool("overwrite")
-	getBindingListFlagListAll = c.Bool("all")
 	getBindingListFlagKeystore = c.String("keystore")
-	getBindingListFlagDirectories = c.StringSlice("dirs")
+	getBindingListFlagDirectories = c.StringSlice("dirlist")
+	getBindingListFlagDirectoriesAndSubdirectories = c.String("dirs")
 
 	// main logics
 	_, err = os.Stat(getBindingListArgFilename)

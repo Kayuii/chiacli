@@ -10,13 +10,7 @@ var massFlags = []cli.Flag{
 		Name:    "overwrite",
 		Aliases: []string{"o"},
 		Usage:   "overwrite existed binding list file",
-		Value:   false,
-	},
-	&cli.BoolFlag{
-		Name:    "all",
-		Aliases: []string{"a"},
-		Usage:   "list all files instead of only plotted files",
-		Value:   false,
+		Value:   true,
 	},
 	&cli.StringFlag{
 		Name:  "keystore",
@@ -24,10 +18,16 @@ var massFlags = []cli.Flag{
 		Value: "",
 	},
 	&cli.StringSliceFlag{
-		Name:    "dirs",
+		Name:    "dirlist",
 		Aliases: []string{"d"},
 		Usage:   "specify the searching directories",
 		Value:   nil,
+	},
+	&cli.StringFlag{
+		Name:    "dirs",
+		Aliases: []string{"D"},
+		Usage:   "specify the searching directories and subdirectories",
+		Value:   "",
 	},
 }
 
