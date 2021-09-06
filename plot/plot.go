@@ -281,7 +281,7 @@ func (p *Plot) RunExec(ChiaExec, plotnum string, args ...string) (b bool, e erro
 	// cmd := cmd.NewCmd(ChiaExec, args...)
 	cmd := cmd.NewCmdOptions(cmd.Options{Streaming: true}, ChiaExec, args...)
 
-	fmt.Println("commandline: \"", ChiaExec, strings.Join(args, "\" "))
+	fmt.Println("commandline: ", ChiaExec, strings.Join(args, " "))
 
 	ctx, cancel := context.WithCancel(context.Background())
 	sigs := make(chan os.Signal, 1)
@@ -314,7 +314,7 @@ func (p *Plot) RunExec(ChiaExec, plotnum string, args ...string) (b bool, e erro
 				}
 				p.Len++
 				log.Println(line)
-				p.FormatProgressShow(line)
+				// p.FormatProgressShow(line)
 			case line, open := <-cmd.Stderr:
 				if !open {
 					cmd.Stderr = nil
