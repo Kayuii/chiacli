@@ -260,7 +260,9 @@ func (p *Plot) Bladebit(config *Config) error {
 			return nil
 		}
 		fmt.Printf("Sleep %d sec \n", config.Sleep)
-		time.Sleep(time.Duration(config.Sleep) * time.Second)
+		if i < config.NumPlots-1 {
+			time.Sleep(time.Duration(config.Sleep) * time.Second)
+		}
 	}
 
 	log.SetFlags(log.LstdFlags)
@@ -279,7 +281,7 @@ func (p *Plot) RunExec(ChiaExec, plotnum string, args ...string) (b bool, e erro
 	// cmd := cmd.NewCmd(ChiaExec, args...)
 	cmd := cmd.NewCmdOptions(cmd.Options{Streaming: true}, ChiaExec, args...)
 
-	fmt.Println("commandline: ", ChiaExec, strings.Join(args, " "))
+	fmt.Println("commandline: \"", ChiaExec, strings.Join(args, "\" "))
 
 	ctx, cancel := context.WithCancel(context.Background())
 	sigs := make(chan os.Signal, 1)
@@ -568,7 +570,7 @@ func (p *Plot) MakeFastPos(confYaml Config) []string {
 
 func (p *Plot) MakeBladeBit(confYaml Config) []string {
 	ChiaCmd := []string{
-		"",
+		"-v",
 	}
 
 	sk := bls.KeyGen(wallet.TokenBytes(32))
