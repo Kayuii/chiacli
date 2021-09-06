@@ -90,7 +90,7 @@ func bladebitAction(c *cli.Context) error {
 
 func NewBladebit() *cli.Command {
 	return &cli.Command{
-		Name:    "FastPos",
+		Name:    "Bladebit",
 		Aliases: []string{"bladebit"},
 		Usage:   "from harold-b/bladebit",
 		Action:  bladebitAction,

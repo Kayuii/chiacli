@@ -28,6 +28,7 @@ func main() {
 		base.NewFastpos(),
 		base.NewProofOfSpace(),
 		base.NewMassCli(),
+		base.NewBladebit(),
 	}
 	err := app.Run(os.Args)
 	if err != nil {
