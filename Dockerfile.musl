@@ -1,8 +1,8 @@
-FROM golang:alpine as builder
+FROM golang:1.14 as builder
 
-RUN apk update \
-  && apk --no-cache add --virtual build-dependencies \
-  zlib-dev build-base linux-headers coreutils
+ARG DEBIAN_FRONTEND=noninteractive
+RUN apt-get update \
+  && apt-get install -y build-essential libc6-dev
 
 ENV GOPROXY=https://goproxy.io,direct
 
@@ -11,7 +11,7 @@ WORKDIR /opt
 
 RUN cd /opt \
   && ls -alh \
-  && make build-mini
+  && make build-static2
 
 # FROM kayuii/chia-plotter:chia-v1.1.7
 # COPY --from=builder /opt/chiacli-static /root/chiacli

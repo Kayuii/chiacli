@@ -222,6 +222,51 @@ func (p *Plot) FastPos(config *Config) error {
 	return nil
 }
 
+func (p *Plot) Bladebit(config *Config) error {
+	if !IsDir(config.FinalPath) {
+		fmt.Println("获取最终目录失败")
+		os.Exit(0)
+	}
+	if !IsDir(config.LogPath) {
+		err := os.MkdirAll(config.LogPath, fs.ModePerm)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(0)
+		}
+	}
+	logPath, err := filepath.Abs(config.LogPath)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(0)
+	}
+	p.LogPath = logPath
+
+	var (
+		ChiaExec string = "bladebit"
+		args     []string
+	)
+
+	fmt.Printf("chia utils %s by %s <%s> %s \n", chiacli.Version, chiacli.Author, chiacli.Email, chiacli.Github)
+
+	for i := 1; i <= config.NumPlots; i++ {
+		fmt.Printf("Plotting %d file \n", i)
+		args = p.MakeBladeBit(*config)
+		res, err := p.RunExec(ChiaExec, strconv.Itoa(i), args...)
+		if err != nil {
+			fmt.Println(err)
+			return nil
+		}
+		if res {
+			return nil
+		}
+		fmt.Printf("Sleep %d sec \n", config.Sleep)
+		time.Sleep(time.Duration(config.Sleep) * time.Second)
+	}
+
+	log.SetFlags(log.LstdFlags)
+	return nil
+}
+
 func (p *Plot) RunExec(ChiaExec, plotnum string, args ...string) (b bool, e error) {
 
 	p.Len = 0
@@ -516,6 +561,59 @@ func (p *Plot) MakeFastPos(confYaml Config) []string {
 
 	ChiaCmd = append(ChiaCmd,
 		"-d", confYaml.FinalPath+"/",
+	)
+
+	return ChiaCmd
+}
+
+func (p *Plot) MakeBladeBit(confYaml Config) []string {
+	ChiaCmd := []string{
+		"",
+	}
+
+	sk := bls.KeyGen(wallet.TokenBytes(32))
+	farmerPk, err := wallet.PublicKeyFromHexString(confYaml.FarmePublicKey)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(0)
+	}
+	poolPk, err := wallet.PublicKeyFromHexString(confYaml.PoolPublicKey)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(0)
+	}
+
+	plotPk := farmerPk.Add(sk.LocalSk().GetPublicKey())
+	plotID := wallet.CalculatePlotIdPk(poolPk.Bytes(), plotPk.Bytes())
+
+	p.PlotID = hex.EncodeToString(plotID)[:12]
+
+	dt_string := time.Now().Format("2006-01-02-15-04")
+
+	p.LogFile = strings.Join([]string{
+		"plot",
+		"k" + strconv.Itoa(confYaml.KSize),
+		dt_string,
+		p.PlotID + ".log",
+	}, "-")
+
+	if strings.Compare(confYaml.PoolContractAddress, "") == 0 {
+		ChiaCmd = append(ChiaCmd,
+			"-p", confYaml.PoolPublicKey,
+		)
+	} else {
+		ChiaCmd = append(ChiaCmd,
+			"-c", confYaml.PoolContractAddress,
+		)
+	}
+
+	ChiaCmd = append(ChiaCmd,
+		"-f", confYaml.FarmePublicKey,
+		"-t", strconv.Itoa(confYaml.Threads),
+	)
+
+	ChiaCmd = append(ChiaCmd,
+		confYaml.FinalPath+"/",
 	)
 
 	return ChiaCmd

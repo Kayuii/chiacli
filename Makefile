@@ -34,7 +34,9 @@ build-mini: deps
 build-static: deps
 	CGO_ENABLED=0 $(GOBUILD) -ldflags '-linkmode "external" -extldflags "-static" -w -s ' -o $(BINARY_NAME)-static ./cmd/chiacli
 
-# CGO_ENABLED=0 $(GOBUILD) -ldflags '-extldflags=-static -w -s ' -o $(BINARY_NAME)-static ./cmd/chiacli
+.PHONY: build-static2
+build-static2: deps
+	CGO_ENABLED=1 $(GOBUILD) -ldflags '-linkmode "external" -extldflags "-static" -w -s ' -o $(BINARY_NAME)-static ./cmd/chiacli
 
 .PHONY: install
 install: deps
